@@ -36,14 +36,15 @@ neededFiles = bunch(
 
 installApps = bunch(
   audTest = "audTest.apk",
-  launcher = "com.teslacoilsw.launcher-4.1.0-41000-minAPI16.apk"
+  launcher = "com.teslacoilsw.launcher-4.1.0-41000-minAPI16.apk",
+  reviveMC74 = "revive.MC74-debug.apk"
 )
 
 
 options = bunch(
-  sendOid=[None, 'o:', 'Name of object to send as body of command'],
-  sessionMode = [False, 's', 'Loop reading commands from stdin'],
-  debug = [False, 'd', 'Pause for debug after cmdReply returns'],
+  #sendOid=[None, 'o:', 'Name of object to send as body of command'],
+  #sessionMode = [False, 's', 'Loop reading commands from stdin'],
+  #debug = [False, 'd', 'Pause for debug after cmdReply returns'],
   help = [False, '?', 'Print help info']
 )
 
@@ -86,6 +87,9 @@ def reviveMain(args):
     target = args.pop(0)  # Take first token (after the options) as the final objective
   log("reviveMC74 "+target+" --------------------------------------------------------------")
 
+  if target=='listObjectives':
+    listObjectivesFunc()
+    return
 
   # Verify that the needed programs and files are/were present
   if os.path.isfile(filesPresentFid)==False:
@@ -465,12 +469,13 @@ def resetBFFFunc():
 
 
 def listObjectivesFunc():
-  print("List of objectives (phases or operations needed for revival) Case sensitive:")
-  for objName in sorted(objectives.keys()):
-    desc = objectives[objName]
+  print("\nList of objectives (phases or operations needed for revival) Case sensitive:")
+  for ob in objectives:
+    objName = ob[0]
+    desc = ob[1]
     if desc[0]!='!':
       print("  "+objName+"\t"+desc)
-
+  print("\n\nThe objectives are listed in the order they are normally preformed.\n")
 
 
 state = bunch( # Attributes are added here to indicate state or progress in objective
@@ -480,18 +485,17 @@ state = bunch( # Attributes are added here to indicate state or progress in obje
 
 # Collection of all defined objectives
 #  Note: If 'func' attribute is missing, the function is:  <objectiveName>Func
-objectives = bunch(
-  revive = "<--Install reviveMC74 apps --this is the principal objective--",
-  checkProgs ="Verifies that the needed programs are available, like: adb, fastboot, unpackBootImg.",
-  checkFiles = "Verifies that you have the needed file.",
-  adbMode = "Gets device into 'adb' mode.",
-  replaceRecovery = "Replace the recovery partition with a full featured recovery program", 
-  backupBoot = "Backs up boot and system partitions.",
-  fixBootPartition = "Rewrites the boot partition image with a 'fixed'(unlocked) ramdisk",
-  installApps = "Install VOIP phone app, uninstall old Meraki phone apps",
-  resetBFF = "Reset the 'Boot partion Fixed Flag'",
-  listObjectives = "Lists all objectives",
-) # end of objectives Bunch
+objectives = [
+  ['listObjectives', "(optional) Lists all objectives"],
+  ['checkFiles', "Verifies that you have the needed files, apps, images, and programs."],
+  ['adbMode', "Gets device into 'adb' mode."],
+  ['replaceRecovery', "Replace the recovery partition with a full featured recovery program"], 
+  ['backupBoot', "Backs up boot and system partitions."],
+  ['fixBootPartition', "Rewrites the boot partition image with a 'fixed'(unlocked) ramdisk"],
+  ['installApps', "Install VOIP phone app, uninstall old Meraki phone apps"],
+  ['revive', "<--Install reviveMC74 apps --this is the principal objective--"],
+  ['resetBFF', "(manual step) Reset the 'Boot partion Fixed Flag'"],
+] # end of objectives
 
 
 
