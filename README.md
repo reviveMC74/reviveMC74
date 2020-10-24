@@ -1,4 +1,4 @@
-# reviveMC74 -- root and install open VOIP app
+# reviveMC74 -- root and install an open VOIP app
 
 A VOIP application to revive the MC74 was withdrawn and abandoned by Cisco/Meraki.
 This package contains code and instructions on how to (more or less) automatically root
@@ -28,6 +28,15 @@ The reviveMC74 git repository contains any needed scripts, disk images, applicat
 or other files -- or will attempt to download them from the internet.  The first thing
 reviveMC74.py does is verify that all the needed files are in the repo's 'installFiles'
 directory.
+
+Get a copy of the repo. In a command prompt, 'cd' to the directory where you want the 
+repo.  This is where all the revival programs and backed-up image files and stuff
+will be kept.
+
+    git clone https://github.com/reviveMC74/reviveMC74.git
+    cd reviveMC74
+
+    
 
 ### Reviving
 
@@ -60,3 +69,8 @@ made into a virtual 'button' to do something.)
 ### Configuring the VOIP SIP address
 
 (TBD)
+
+### Problems with the revival process
+
+If a problem occurs while running reviveMC74.py, look at the 'reviveMC.log' file, it may
+have some useful info.
