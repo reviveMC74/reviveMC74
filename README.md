@@ -36,6 +36,15 @@ will be kept.
     git clone https://github.com/reviveMC74/reviveMC74.git
     cd reviveMC74
 
+### USB-A to USB-A Cable
+This cable is used for the ADB (Android Debug Bridge) connection between your computer,
+which is a USB Host (ie has a USB-A connector) and the MC74 USB-A host connector on
+the right side of the MC74, just lower than the Mute button.  Make it yourself:
+[USB-A to USB-A Instructable]{https://www.instructables.com/Male-to-Male-A-to-A-USB-Cable/)
+Of buy one, such as: 
+[this one](https://www.amazon.com/UGREEN-Transfer-Enclosures-Printers-Cameras/dp/B00P0E394U)
+or 
+[this one](https://www.walmart.com/ip/SF-Cable-3-feet-USB-2-0-A-Male-to-A-Male-Cable-Off-White/987955884).
     
 
 ### Reviving
