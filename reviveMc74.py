@@ -159,7 +159,7 @@ def executeLog(cmd, showErr=False):
 def log(msg):
   fp = open(logFid, 'ab')
   ts = datetime.datetime.now().strftime("%y/%m/%d-%H:%M:%S")
-  fp.write(ts+" "+msg+'\n')
+  fp.write(str.encode(ts+" "+msg+'\n'))
   fp.close()
 
 
