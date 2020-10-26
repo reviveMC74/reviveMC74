@@ -2,3 +2,5 @@
 *#
 *~
 *.flag
+__pycache__
+*.pyc

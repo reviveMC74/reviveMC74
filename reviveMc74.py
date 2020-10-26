@@ -23,10 +23,10 @@ filesPresentFid = "filesPresent.flag"  # If this file exists, we checked that ne
 
 neededProgs = bunch(  # These are commands that demonstrate that needed programs are in the
   # PATH and that they execute (ie not just the filename of the program
-  adb = "adb version",   
-  fastboot = "fastboot", 
-  unpackbootimg = "unpackbootimg",
-  mkbootimg = "mkbootimg",
+  adb = ["adb version", "adbNeeded"],   
+  fastboot = ["fastboot", "adbNeeded"],
+  unpackbootimg = ["unpackbootimg", "unpNeeded"],
+  mkbootimg = ["mkbootimg", "unpNeeded"]
 )
 
 neededFiles = bunch(
@@ -100,6 +100,22 @@ def reviveMain(args):
         +" directory:")
       for line in state.error:
         print("  --"+line)
+
+      if "adbNeeded" in state.needed:
+        print("\nADB/FASTBOOT programs needed.  See:\n"
+          +"  https://www.xda-developers.com/install-adb-windows-macos-linux/\n"
+          +"  for instructions.  If you have adb and fastboot, make sure they are in the 'path'"
+          +"\n  (For experts, see: reviveMC74.py  neededProgs.adb[0] for the command we use to test.)"
+        )
+        
+      if "unpNeeded" in state.needed:
+        print("\nUNPACKBOOTIMG/MKBOOTIMG programs needed.  To download, see:\n"
+          +"  https://forum.xda-developers.com/showthread.php?t=2073775\n"
+          +"  or: https://github.com/huaixzk/android_win_tool   for precompiled windows version\n"
+          +"  or: https://github.com/osm0sis/mkbootimg   for the source code.\n"
+          +"  If you have unpackbootimg and mkbootimg, make sure they are in the 'path'"
+        )
+        
       return
 
   # Execute the target objective's 'func', it will call it's prerequisites
@@ -124,13 +140,14 @@ def reviveMain(args):
 
 
 # VARIOUS UTILITY FUNCTIONS --------------------------------------------------
-def chkProg(cmd):
+def chkProg(pg):
   try:
-    resp, rc = execute(cmd, False)
+    resp, rc = execute(pg[0], False)
   except:
-    progName = cmd.split(' ')[0]
-    print("Can't find '"+progName+"' program in path")
+    progName = pg[0].split(' ')[0]
+    #print("Can't find '"+progName+"' program in path")
     state.error.append("checkProgs: Can't find '"+progName+"' program")
+    state.needed.append(pg[1])
     return False
   return True
 
@@ -382,7 +399,7 @@ def adbModeFunc(targetMode="adb"):
     isNormal = True
   else:
     resp, rc = execute("fastboot devices", False)
-    print("fbDev: "+resp)
+    print("  fastboot Devices: "+resp)
     ln = findLine(resp, "\tfastboot")
     if ln:
       currentMode = "fastboot"
@@ -392,7 +409,7 @@ def adbModeFunc(targetMode="adb"):
         return True
       isFastboot = True
 
-  print("  --adbModeFunc, currentMode: "+currentMode+", targetMode: "+targetMode)
+  print("\n  --adbModeFunc, currentMode: "+currentMode+", targetMode: "+targetMode)
 
   if currentMode == targetMode:
     pass  # Nothing to change
@@ -406,13 +423,13 @@ def adbModeFunc(targetMode="adb"):
     Prepare to reboot the MC74.
     -- Remove the USB cable from the side of the MC74 (if connected)
     -- Remove the Ethernet/POE cable from the back of the MC74
-    -- Reconnect the USB cable to the side(not back) connector of the MC74
+    -- Reconnect the USB cable to the right side(not back) connector of the MC74
       (and the other end to the development computer)
 
     Then, be ready to do this after you press enter:
     -- Apply power with POE ethernet cable to WAN port (the ethernet port closest to the round
       socket on the back of the MC74.)
-    -- quickly, press and hold mute button, before backlights flashes
+    -- quickly, press and hold mute button, before backlight flashes
     -- keep mute button down until cisco/meraki logo appears and vibrator grunts.
     -- release mute
     -- (in about 15 sec, Windows should make the  'usb device attached' sound.)
@@ -480,7 +497,8 @@ def listObjectivesFunc():
 
 state = bunch( # Attributes are added here to indicate state or progress in objective
   adbMode = None,
-  error = []   # A replace to return a list of errors
+  error = [],   # A place to return a list of errors
+  needed = []   # A list of messages that need to be displayed
 )
 
 # Collection of all defined objectives
