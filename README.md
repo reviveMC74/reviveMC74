@@ -1,6 +1,6 @@
 # reviveMC74 -- root and install an open VOIP app
 
-A VOIP application to revive the MC74 was withdrawn and abandoned by Cisco/Meraki.
+A VOIP application to revive the MC74 that was withdrawn and abandoned by Cisco/Meraki.
 This package contains code and instructions on how to (more or less) automatically root
 an MC74 and install the new Android apps to allow the phone to be used on any VOIP
 provider.
@@ -83,3 +83,8 @@ made into a virtual 'button' to do something.)
 
 If a problem occurs while running reviveMC74.py, look at the 'reviveMC.log' file, it may
 have some useful info.
+
+Report problems on the github reviveMC74 issues page.
+
+### The Software
+reviveMC74 keeps the original (old) Android operating system on the MC74.  A version of the Linphone Soft VOIP application is installed.  A com.teslacoil Android Launcher is included to allow other Android apps to be launched.
