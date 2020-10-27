@@ -85,7 +85,7 @@ def reviveMain(args):
     target = "revive"
   else:
     target = args.pop(0)  # Take first token (after the options) as the final objective
-  log("reviveMC74 "+target+" --------------------------------------------------------------")
+  log("\nreviveMC74 "+target+" --------------------------------------------------------------")
 
   if target=='listObjectives':
     listObjectivesFunc()
@@ -278,7 +278,7 @@ def backupBootFunc():
     
   print("    -- unpack rmcBoot.img and unpack the ramdisk")
   resp, rc = executeLog("python "+installFilesDir+"/packBoot.py unpack rmcBoot.img")
-  #shutil.copyfile("rmcBoot.img", "rmcBoot.imgOrig")
+
   try:
     os.remove("rmcBoot.imgOrig")
   except:  pass
@@ -294,8 +294,8 @@ def fixBootPartitionFunc():
 
   print("  --fixBootPartitionFunc")
   try:
-    os.remove("rmcBoot.imgOrig")
-  except:  print("    (was no .imgOrig, ok)")
+    os.remove("rmcBoot.img")
+  except:  pass
 
   # Edit default.props, change 'ro.secure=1' to 'ro.secure=0'
   # and: persist.meraki.usb_debug=0 to ...=1
@@ -303,10 +303,14 @@ def fixBootPartitionFunc():
   prop = readFile("rmcBootRamdisk/default.prop")
   log("default.prop:\n"+prop)
 
-  ii = prop.index('secure=')+7
-  prop = prop[:ii]+'0'+prop[ii+1:] # Change '1' to '0'
-  ii = prop.index('usb_debug=')+10
-  prop = prop[:ii]+'1'+prop[ii+1:] # Change '0' to '1'
+  try:
+    ii = prop.index('secure=')+7
+    prop = prop[:ii]+'0'+prop[ii+1:] # Change '1' to '0'
+  except:  print("  --failed to find/replace 'secure=1'")
+  try:
+    ii = prop.index('usb_debug=')+10
+    prop = prop[:ii]+'1'+prop[ii+1:] # Change '0' to '1'
+  except:  print("  --failed to find/replace 'secure=1'")
   log("itermediate default.prop:\n"+prop)
 
   # other fixes (not implemented yet)
@@ -330,6 +334,7 @@ def fixBootPartitionFunc():
   for fid in os.listdir('.'):
     if fid[:13] == 'rmcBoot.img20':
       os.rename(fid, 'rmcBoot.img')
+      break
 
   print("    -- write new boot.img to boot parition")
   resp, rc = executeLog("adb push rmcBoot.img /cache/rmcBoot.img")
@@ -351,8 +356,11 @@ def installAppsFunc():
 
   # Uninstall apps
   resp, rc = executeLog("adb rm /system/app/DroidNode.apk")
-  resp, rc = executeLog("adb rm /syste/app/DroidNodeSystemSvcs.apk")
-  resp, rc = executeLog("adb uninstall adb uninstallpackage:com.meraki.dialer2")
+  print("    rm DroidNode.apk: "+resp+" "+str(rc))
+  resp, rc = executeLog("adb rm /systemls/app/DroidNodeSystemSvcs.apk")
+  print("    rm DroidNodeSystemSvcs.apk: "+resp+" "+str(rc))
+  resp, rc = executeLog("adb uninstall package:com.meraki.dialer2")
+  print("    uninstall dialer2: "+resp+" "+str(rc))
   # Perhaps run: ps |grep meraki and kill process?  perhaps reboot 
 
   # Install new apps

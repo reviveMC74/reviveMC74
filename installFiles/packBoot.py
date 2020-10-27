@@ -31,6 +31,8 @@ def unpack(biFn):
   print("gunzip "+biFn+"-ramdisk.gz: "+str(rc)+" "+resp.decode("utf-8"))
   rd = readFile(biFn+"-ramdisk")
   print("ramdisk "+str(len(rd))+" bytes")
+  lsRdOrig, rc = execu("cpio -i -tv", rd)
+  writeFile(fn+"LsRdOrig", lsRdOrig)
 
   os.chdir("..")
   rdDir = fn+"Ramdisk"
@@ -70,8 +72,6 @@ def pack(biFn):
   pr(fList)
 
   outFid = "../"+unDir+"/"+biFn+"-ramdisk"
-  lsRdOrig, rc = execute("cpio -tv -I "+outFid)
-
   rd, rc = execu("cpio -o -H newc -R 0.0 -F "+outFid, fList, showErr=False, returnStr=False)
   print("cpio -o  rc="+str(rc)+", "+str(os.path.getsize(outFid))+" bytes")
 
@@ -107,8 +107,7 @@ def pack(biFn):
   resp, rc = execute(cmd, True)
 
   os.chdir("..")
-  writeFile(fn+"RdNew", lsRdNew)
-  writeFile(fn+"RdOrig", lsRdOrig)
+  writeFile(fn+"LsRdNew", lsRdNew)
 
 
 def listDir(dir):  # Replacement for 'find . -print' on Windows

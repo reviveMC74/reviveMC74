@@ -79,6 +79,43 @@ made into a virtual 'button' to do something.)
 
 (TBD)
 
+### Revival Process
+
+The revival process is done in step, called 'objectives'.  Most objectives have 
+perequiste objectives.  If a perequiste objective has already been completed, it is 
+not skipped (unless it is explicity requested by the user).  This objectively run
+in the following order:
+
+* checkFiles    Verifies that you have the needed files, apps, images, and programs.
+* replaceRecovery       Replace the recovery partition with a full featured recovery program
+* backupBoot    Backs up boot partitions and extracts the files from it.
+* fixBootPartition      Rewrites the boot partition image with a 'fixed'(unlocked) ramdisk
+* installApps   Install VOIP phone app, uninstall old Meraki phone apps
+* revive        The Prime Objective -- causes the perequisites to be run
+
+* listObjectives        (optional) Lists all objectives
+* adbMode       Gets device into 'adb' mode.
+* resetBFF      (manual step) Reset the 'Boot partion Fixed Flag' to force this fixBootParation to be rerun on a subsequent call.
+
+If you look in reviveMC74.py, each 'objective' is in its own function, for example,  
+'backupBootFunc' if the function that imlements the 'backupBoot' objective.  The first
+thing 'backupBootFunc' does is to call 'replaceRecoveryFunc' to see if the recovery 
+partition has had 'clockwork recovery' installed.  If it hasn't it proceeds do that.
+
+### Uploaded Data
+
+In the 'backupBoot' objective of reviving the MC74, the contents of the stock /boot partition is
+uploaded to the host, and extracted.  It is then modified and reassembled.  This data is 
+left on the host computer for advanced users to look and and modify.  After modification
+the user can repeat the reviveMC74.py 'fixBootPartition' objective to install those
+modifications to the MC74.
+
+The data on the host includes:
+*rmcBoot.imgOrig  -- the original boot partition image uploaded from phone
+*rmcBootUnpack    -- boot.img unpacked
+*rmcBootRamdisk   -- ramdisk.gz from rmcBootUnpack, expanded into individual files
+
+
 ### Problems with the revival process
 
 If a problem occurs while running reviveMC74.py, look at the 'reviveMC.log' file, it may
@@ -86,5 +123,5 @@ have some useful info.
 
 Report problems on the github reviveMC74 issues page.
 
-### The Software
+### Phone Software
 reviveMC74 keeps the original Android (JellyBean api level 17) operating system on the MC74.  A version of the Linphone Soft VOIP application is installed.  A com.teslacoil Android Launcher is included to allow other Android apps to be launched.
