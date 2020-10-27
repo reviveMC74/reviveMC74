@@ -22,17 +22,17 @@ def unpack(biFn):
   print("cwd "+os.getcwd())
 
   resp, rc = execute("unpackbootimg -i ../"+biFn)
-  print("unpackbootimg "+biFn+": "+str(rc)+" "+resp.decode("utf-8"))
+  print("unpackbootimg "+biFn+": "+str(rc)+"\n"+resp)
   
   resp, rc = execute("ls -l")
-  print("ls "+os.getcwd()+": "+str(rc)+" "+resp.decode("utf-8"))
+  print("ls "+os.getcwd()+": "+str(rc)+"\n"+resp)
 
   resp, rc = execute("gunzip "+biFn+"-ramdisk.gz")
-  print("gunzip "+biFn+"-ramdisk.gz: "+str(rc)+" "+resp.decode("utf-8"))
+  print("gunzip "+biFn+"-ramdisk.gz: "+str(rc)+"\n"+resp)
   rd = readFile(biFn+"-ramdisk")
   print("ramdisk "+str(len(rd))+" bytes")
   lsRdOrig, rc = execu("cpio -i -tv", rd)
-  writeFile(fn+"LsRdOrig", lsRdOrig)
+  writeFile("../"+fn+"LsRdOrig", lsRdOrig)
 
   os.chdir("..")
   rdDir = fn+"Ramdisk"

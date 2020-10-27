@@ -278,6 +278,7 @@ def backupBootFunc():
     
   print("    -- unpack rmcBoot.img and unpack the ramdisk")
   resp, rc = executeLog("python "+installFilesDir+"/packBoot.py unpack rmcBoot.img")
+  print("      (unpack: "+resp+" "+str(rc)+")")
 
   try:
     os.remove("rmcBoot.imgOrig")
@@ -328,6 +329,7 @@ def fixBootPartitionFunc():
  
   print("    -- repack ramdisk, repack rmcBoot.img")
   resp, rc = executeLog("python "+installFilesDir+"/packBoot.py pack rmcBoot.img")
+  print("      (unpack: "+resp+" "+str(rc)+")")
   if os.path.isfile("rmcBoot.img"):
     hndExcept()
   # Rename the new file, rmcBoot.img20xxxxxxxxxx (20... is the date/time stamp)

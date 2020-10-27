@@ -329,7 +329,7 @@ def execu(cmd, stdin=None, showErr=True, returnStr=True):
   if showErr and len(err)>0:
     print("executeErr: %s" % (err))
   if returnStr:
-    out = out.decode("utf-8")
+    out = out.encode()
   return out, proc.returncode
 
 
