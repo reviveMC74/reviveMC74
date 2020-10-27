@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 ''''packBoot -- unpack an Android boot.img to a kernel file and unpacked ramdisk --
 repack the ramdisk directory back into a ramdisk and pack with kernel
-Ribo's synchronizer for two disk folders
 @author: ribo
 '''
 import sys, os, time, subprocess, shutil

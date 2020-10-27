@@ -4,3 +4,5 @@
 *.flag
 __pycache__
 *.pyc
+rmcBoot*
+

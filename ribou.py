@@ -317,7 +317,8 @@ def readObj(fid):
   return eval(str)
 
 
-def execu(cmd, stdin=None, showErr=True):
+def execu(cmd, stdin=None, showErr=True, returnStr=True):
+  '''Execute an operating system command, prehaps passing data to stdin'''
   import subprocess
   if type(cmd)==str:
     cmd = cmd.split(' ')
@@ -327,20 +328,24 @@ def execu(cmd, stdin=None, showErr=True):
   out, err = proc.communicate(stdin)
   if showErr and len(err)>0:
     print("executeErr: %s" % (err))
+  if returnStr:
+    out = out.decode("utf-8")
   return out, proc.returncode
 
 
-def execute(cmd, showErr=True):
+def execute(cmd, showErr=True, returnStr=True):
   import subprocess
   if type(cmd)==str:
     cmd = cmd.split(' ')
   cmd = [xx for xx in cmd if xx!='']  # Remove ' ' tokens caused by multiple space in str
   proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   out, err = proc.communicate()
-  out = out.decode("utf8")  # Stupid py3 things bytes are not strings
   if showErr and len(err)>0:
     err = err.decode("utf8")
     print("executeErr: %s" % (err))
+  if returnStr:
+    #out = out.decode("utf-8")
+    out = out.encode()  # Convert UNICODE (u'xxx') to string
   return out, proc.returncode
 
 

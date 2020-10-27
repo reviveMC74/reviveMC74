@@ -138,6 +138,9 @@ def reviveMain(args):
     for line in state.error:
       print("  --"+line)
 
+  log(rformat(state))  # Log the state of the operation on completion
+
+
 
 # VARIOUS UTILITY FUNCTIONS --------------------------------------------------
 def chkProg(pg):
@@ -208,13 +211,14 @@ def replaceRecoveryFunc():
   # Has the recovery partition already been replaced?
   isReplaced = False
   resp, rc = execute("adb shell grep secure default.prop", False)
-  print("  adb shell resp: "+resp)
+  print("    rRf: adb shell resp: "+resp)
   
   if findLine(resp, "ro.secure=0"):
     # This phone already has had the recovery replaced (ie shell cmd worked)
-    # ro.secure has already been changed to '0', boot partition alreay fixed
+    # ro.secure has already been changed to '0', boot partition already fixed
     state.fixBootPartition = True
-    state.backupBoot = True  # No need to backup, boot partition already fixed
+    if os.path.isfile("rmcBoot.img"):
+      state.backupBoot = True  # No need to backup, boot partition already fixed
 
   elif findLine(resp, "failed: No such file"):
     # The recovery partition has not been replaced, do it now
@@ -224,8 +228,8 @@ def replaceRecoveryFunc():
         return False
 
     print("  --replaceRecovery partition")
-    print("    --Writng revovery partition image:  "+recoveryClockImg)
-    resp, rc = executeLog("fastboot flash recovery "+installFilesDir+"/"+recoveryClockImg)
+    print("    --Writng revovery partition image:  "+neededFiles.recoveryClockImg)
+    resp, rc = executeLog("fastboot flash recovery "+installFilesDir+"/"+neededFiles.recoveryClockImg)
     print("    flash resp: "+resp)
 
     print('''
@@ -277,7 +281,7 @@ def backupBootFunc():
   #shutil.copyfile("rmcBoot.img", "rmcBoot.imgOrig")
   try:
     os.remove("rmcBoot.imgOrig")
-  except:  print("    (was no .imgOrig, ok)")
+  except:  pass
   os.rename("rmcBoot.img", "rmcBoot.imgOrig")
 
   state.backupBoot = True
@@ -295,7 +299,7 @@ def fixBootPartitionFunc():
 
   # Edit default.props, change 'ro.secure=1' to 'ro.secure=0'
   # and: persist.meraki.usb_debug=0 to ...=1
-  print("    --edit default.prop to change ro.secure to = 0")
+  print("    -- edit default.prop to change ro.secure to = 0")
   prop = readFile("rmcBootRamdisk/default.prop")
   log("default.prop:\n"+prop)
 
@@ -305,15 +309,15 @@ def fixBootPartitionFunc():
   prop = prop[:ii]+'1'+prop[ii+1:] # Change '0' to '1'
   log("itermediate default.prop:\n"+prop)
 
-  # other fixes
-  print("!!UIF create sym link from /ssm to /sdcard/ssm");
-  print("!!UIF change prompt to be '\n# ' (shorten it)");
+  # other fixes (not implemented yet)
+  print("  (UIF create sym link from /ssm to /sdcard/ssm)");
+  print("  (UIF change prompt to be '\\n# ' (shorten it))");
 
   # Remove \r from \r\n on windows systems
   pp = []
   for ln in prop.split('\n')[:-1]:
     if ln[:-1]=='\r':  ln = ln[:-1]
-    print("  .."+ln)
+    print("      .."+ln)
     pp.append(ln)
   writeFile("rmcBootRamdisk/default.prop", '\n'.join(pp))
   log("fixed default.prop:\n"+'\n'.join(pp))
@@ -399,7 +403,8 @@ def adbModeFunc(targetMode="adb"):
     isNormal = True
   else:
     resp, rc = execute("fastboot devices", False)
-    print("  fastboot Devices: "+resp)
+    if len(resp):
+      print("  fastboot Devices: "+resp+" ("+str(len(resp))+")")
     ln = findLine(resp, "\tfastboot")
     if ln:
       currentMode = "fastboot"
@@ -421,18 +426,18 @@ def adbModeFunc(targetMode="adb"):
   elif isAdb==False and targetMode=="adb":
     print('''
     Prepare to reboot the MC74.
-    -- Remove the USB cable from the side of the MC74 (if connected)
-    -- Remove the Ethernet/POE cable from the back of the MC74
-    -- Reconnect the USB cable to the right side(not back) connector of the MC74
-      (and the other end to the development computer)
+      -- Remove the USB cable from the side of the MC74 (if connected)
+      -- Remove the Ethernet/POE cable from the back of the MC74
+      -- Reconnect the USB cable to the right side(not back) connector of the MC74
+        (and the other end to the development computer)
 
     Then, be ready to do this after you press enter:
-    -- Apply power with POE ethernet cable to WAN port (the ethernet port closest to the round
-      socket on the back of the MC74.)
-    -- quickly, press and hold mute button, before backlight flashes
-    -- keep mute button down until cisco/meraki logo appears and vibrator grunts.
-    -- release mute
-    -- (in about 15 sec, Windows should make the  'usb device attached' sound.)
+      -- Apply power with POE ethernet cable to WAN port (the ethernet port closest to the round
+        socket on the back of the MC74.)
+      -- quickly, press and hold mute button, before backlight flashes
+      -- keep mute button down until cisco/meraki logo appears and vibrator grunts.
+      -- release mute
+      -- (in about 15 sec, Windows should make the  'usb device attached' sound.)
 
     Press enter when ready to power up the MC74.
     ''')
