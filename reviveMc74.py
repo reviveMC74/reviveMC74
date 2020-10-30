@@ -436,6 +436,7 @@ def adbModeFunc(targetMode="adb"):
   if findLine(resp, "\tdevice"):
     currentMode = "normal"
     isNormal = True
+    isAdb = True  # Normal mode (after fixing) should also adb enabled.
   else:
     resp, rc = execute("fastboot devices", False)
     if len(resp):
@@ -458,6 +459,9 @@ def adbModeFunc(targetMode="adb"):
     print("    --Changing from adb mode to fastboot mode")
     resp, rc = execute("adb reboot bootloader")
 
+  elif isAdb and targetMode=="adb":
+    currentMode = targetMode  # normal mode should be eqivalent to adb after fixing
+    
   elif isAdb==False and targetMode=="adb":
     print('''
     Prepare to reboot the MC74.
@@ -484,7 +488,7 @@ def adbModeFunc(targetMode="adb"):
   elif isNormal==False and targetMode=="normal":
     print("    --Changing from adb mode to normal device mode")
     resp, rc = execute("adb reboot")
-    
+
   else:
     print("adbMode request to go from '"+currentMode+"' mode to '"+targetMode+"'.")
     print("  Don't know how to change to that mode.")
@@ -552,7 +556,7 @@ state = bunch( # Attributes are added here to indicate state or progress in obje
 objectives = [
   ['listObjectives', "(optional) Lists all objectives"],
   ['checkFiles', "Verifies that you have the needed files, apps, images, and programs."],
-  ['adbMode', "Gets device into 'adb' mode."],
+  ['adbMode', "Gets device into 'adb' mode, or 'fastboot' or 'normal' operation."],
   ['replaceRecovery', "Replace the recovery partition with a full featured recovery program"], 
   ['backupPart', "Backs up boot (or other specified partition)."],
   ['fixPart', "Rewrites the boot partition image with a 'fixed'(unlocked) ramdisk"],
