@@ -46,7 +46,7 @@ def unpack(biFn):
   
   resp, rc = execu("cpio -i -m", rd)
     # -m is preservce file modification time
-  print("cpio -i <"+biFn+"-ramdisk: "+str(rc)+" "+resp)
+  print("cpio -i <"+biFn+"-ramdisk: "+str(rc)+"\n"+resp)
   
 
 def pack(biFn):
@@ -72,7 +72,8 @@ def pack(biFn):
   pr(fList)
 
   outFid = "../"+unDir+"/"+biFn+"-ramdisk"
-  rd, rc = execu("cpio -o -H newc -R 0.0 -F "+outFid, fList, showErr=False, returnStr=False)
+  rd, rc = execu("cpio -o -H newc -R 0.0 -F "+outFid, fList, showErr=False,
+    returnStr=False)
   print("cpio -o  rc="+str(rc)+", "+str(os.path.getsize(outFid))+" bytes")
 
   # In the bootUnpack directory, write the ramdisk file and gzip it
@@ -86,7 +87,7 @@ def pack(biFn):
 
   # Compress ramdisk
   resp, rc = execute("ls -l")
-  print("pre-gzip "+os.getcwd()+": "+str(rc)+" "+resp)
+  print("pre-gzip "+os.getcwd()+": "+str(rc)+"\n"+resp)
   try:
     os.remove(biFn+"-ramdisk.gz")
   except: pass
@@ -100,10 +101,11 @@ def pack(biFn):
   pagesize = readFile(biFn+"-pagesize")[:-1]
   ts = datetime.now().strftime("%y%m%d%H%M")
   cmd = "mkbootimg --kernel "+biFn+"-zImage --ramdisk "+biFn+"-ramdisk.gz" \
-    +" --cmdline '"+cmdline+"' --base "+base+" --pagesize "+pagesize+" --output ../"+biFn+ts
+    +" --cmdline '"+cmdline+"' --base "+base+" --pagesize "+pagesize \
+    +" --output ../"+biFn+ts
   print("cmd: '"+cmd+"'")
   resp, rc = execute("ls -l")
-  print("pre-mkbootimg "+os.getcwd()+": "+str(rc)+" "+resp)
+  print("pre-mkbootimg "+os.getcwd()+": "+str(rc)+"\n"+resp)
   resp, rc = execute(cmd, True)
 
   os.chdir("..")

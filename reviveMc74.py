@@ -44,13 +44,16 @@ installApps = bunch(
 options = bunch(
   #sendOid=[None, 'o:', 'Name of object to send as body of command'],
   #sessionMode = [False, 's', 'Loop reading commands from stdin'],
-  #debug = [False, 'd', 'Pause for debug after cmdReply returns'],
+  #debug = [False, 'd', 'Pause for debug after cmdeply returns'],
   help = [False, '?', 'Print help info']
 )
 
+arg = bunch(  # Place to store args for objective funcs to use
+  part = "boot",  # Target partition to backup or fix/install, ie 'boot' or 'boot2'
+)
 
 def reviveMain(args):
-  global target
+  global target, arg
 
   if type(args)==str:
     args = args.split(' ')
@@ -84,9 +87,15 @@ def reviveMain(args):
   if len(args)==0:
     target = "revive"
   else:
-    target = args.pop(0)  # Take first token (after the options) as the final objective
-  log("\nreviveMC74 "+target+" --------------------------------------------------------------")
+    target = args.pop(0)  # Take first token (after the options) as final objective
+  log("\nreviveMC74 "+target+"-"+','.join(args)  \
+    +" --------------------------------------------------------------")
 
+  # Parse args, set them as variables in global 'arg' var
+  for tok in args:
+    tok = tok.split('=')
+    arg[tok[0]] = tok[1] if len(tok)==2 else True
+  
   if target=='listObjectives':
     listObjectivesFunc()
     return
@@ -187,8 +196,8 @@ def log(msg):
 # FUNCTIONS FOR CARRYING OUT OBJECTIVES ----------------------------------------
 def reviveFunc():
   print("  --(reviveFunc)") 
-  if fixBootPartitionFunc()==False:
-    print("Didn't fixBootPartition")  
+  if fixPartFunc()==False:
+    print("Didn't fixPart")  
     return False
 
   if installAppsFunc()==False:
@@ -216,7 +225,7 @@ def replaceRecoveryFunc():
   if findLine(resp, "ro.secure=0"):
     # This phone already has had the recovery replaced (ie shell cmd worked)
     # ro.secure has already been changed to '0', boot partition already fixed
-    state.fixBootPartition = True
+    state.fixBootPart = True
     if os.path.isfile("rmcBoot.img"):
       state.backupBoot = True  # No need to backup, boot partition already fixed
 
@@ -254,100 +263,116 @@ def replaceRecoveryFunc():
   return True
 
 
-def backupBootFunc():
+def backupPartFunc():
   if replaceRecoveryFunc()==False:
     return False
-  if "backupBoot" in state and state.backupBoot and target!="backupBoot":
+  if "backupBoot" in state and state.backupBoot and target!="backupPart":
     # If target is explicitly backupBoot, continue on
-    return True  # fixBootPartition was already done, no need to backup boot
+    return True  # backupBoot was already done, no need to backup boot
 
-  print("  --backup boot partition")
-  resp, rc = executeLog("adb shell dd if=/dev/block/mmcblk0p15 of=/cache/rmcBoot.img ibs=4096")
+  partName = arg.part  # Get name of partition to backup, defaults to 'boot'
+  partFid = "/dev/block/platform/sdhci.1/by-name/"+partName
+  imgFn = 'rmc'+partName[:1].upper()+partName[1:]
+
+  print("  --backup "+partName+" partition: "+partFid)
+  resp, rc = executeLog("adb shell dd if="+partFid+" of=/cache/"+imgFn+".img ibs=4096")
   print("    "+str(rc)+" "+resp)
-  resp, rc = executeLog("adb pull /cache/rmcBoot.img .")
+  resp, rc = executeLog("adb pull /cache/"+imgFn+".img .")
   print("    "+str(rc)+" "+resp)
-  resp, rc = executeLog("adb shell rm /cache/rmcBoot.img")
+  resp, rc = executeLog("adb shell rm /cache/"+imgFn+".img")
   print("    "+str(rc)+" "+resp)
 
-  if os.path.isfile("rmcBoot.img")==False:
+  if os.path.isfile(imgFn+".img")==False:
     return False
-  biSize = os.path.getsize("rmcBoot.img")
-  if biSize!=8192*1024:
-    print("--rmcBoot.img file size is "+str(biSize)+", should be 8388608")
+  biSize = os.path.getsize(imgFn+".img")
+  if biSize!=8192*1024 and partName[:4]!='boot':
+    print("--"+imgFn+".img file size is "+str(biSize)+", should be 8388608")
     return False
     
-  print("    -- unpack rmcBoot.img and unpack the ramdisk")
-  resp, rc = executeLog("python "+installFilesDir+"/packBoot.py unpack rmcBoot.img")
+  print("    -- unpack "+imgFn+".img and unpack the ramdisk")
+  resp, rc = executeLog("python "+installFilesDir+"/packBoot.py unpack "+imgFn+".img")
   print("      (unpack: "+resp+" "+str(rc)+")")
 
   try:
-    os.remove("rmcBoot.imgOrig")
+    os.remove(imgFn+".imgOrig")
   except:  pass
-  os.rename("rmcBoot.img", "rmcBoot.imgOrig")
+  os.rename(imgFn+".img", imgFn+".imgOrig")
 
-  state.backupBoot = True
-  return True
-
-
-def fixBootPartitionFunc():
-  if backupBootFunc()==False:
+  if partName[:4]=='boot':
+    state.backupBoot = True
+    return True
+  else: 
     return False
 
-  print("  --fixBootPartitionFunc")
+
+def fixPartFunc():
+  if backupPartFunc()==False:
+    return False
+
+  partName = arg.part  # Get name of partition to backup, defaults to 'boot'
+  partFid = "/dev/block/platform/sdhci.1/by-name/"+partName
+  imgFn = 'rmc'+partName[:1].upper()+partName[1:]
+
+  print("  --fixPartFunc "+imgFn+".img to "+partFid)
   try:
-    os.remove("rmcBoot.img")
+    os.remove(imgFn+'.img')
   except:  pass
 
-  # Edit default.props, change 'ro.secure=1' to 'ro.secure=0'
-  # and: persist.meraki.usb_debug=0 to ...=1
-  print("    -- edit default.prop to change ro.secure to = 0")
-  prop = readFile("rmcBootRamdisk/default.prop")
-  log("default.prop:\n"+prop)
+  if partName[:4]=='boot':
+    # Edit default.props, change 'ro.secure=1' to 'ro.secure=0'
+    # and: persist.meraki.usb_debug=0 to ...=1
+    print("    -- edit default.prop to change ro.secure to = 0")
+    prop = readFile(imgFn+"Ramdisk/default.prop")
+    log("default.prop:\n"+prop)
 
-  try:
-    ii = prop.index('secure=')+7
-    prop = prop[:ii]+'0'+prop[ii+1:] # Change '1' to '0'
-  except:  print("  --failed to find/replace 'secure=1'")
-  try:
-    ii = prop.index('usb_debug=')+10
-    prop = prop[:ii]+'1'+prop[ii+1:] # Change '0' to '1'
-  except:  print("  --failed to find/replace 'secure=1'")
-  log("itermediate default.prop:\n"+prop)
+    try:
+      ii = prop.index('secure=')+7
+      prop = prop[:ii]+'0'+prop[ii+1:] # Change '1' to '0'
+    except:  print("  --failed to find/replace 'secure=1'")
+    try:
+      ii = prop.index('usb_debug=')+10
+      prop = prop[:ii]+'1'+prop[ii+1:] # Change '0' to '1'
+    except:  print("  --failed to find/replace 'secure=1'")
+    log("itermediate default.prop:\n"+prop)
 
-  # other fixes (not implemented yet)
-  print("  (UIF create sym link from /ssm to /sdcard/ssm)");
-  print("  (UIF change prompt to be '\\n# ' (shorten it))");
+    # other fixes (not implemented yet)
+    print("  (UIF create sym link from /ssm to /sdcard/ssm)");
+    print("  (UIF change prompt to be '\\n# ' (shorten it))");
 
-  # Remove \r from \r\n on windows systems
-  pp = []
-  for ln in prop.split('\n')[:-1]:
-    if ln[:-1]=='\r':  ln = ln[:-1]
-    print("      .."+ln)
-    pp.append(ln)
-  writeFile("rmcBootRamdisk/default.prop", '\n'.join(pp))
-  log("fixed default.prop:\n"+'\n'.join(pp))
- 
-  print("    -- repack ramdisk, repack rmcBoot.img")
-  resp, rc = executeLog("python "+installFilesDir+"/packBoot.py pack rmcBoot.img")
-  print("      (unpack: "+resp+" "+str(rc)+")")
-  if os.path.isfile("rmcBoot.img"):
+    # Remove \r from \r\n on windows systems
+    pp = []
+    for ln in prop.split('\n'):
+      if ln[-1:]=='\r':  ln = ln[:-1]
+      if len(ln)>0:
+        print("      .."+ln)
+        pp.append(ln)
+    writeFile(imgFn+"Ramdisk/default.prop", '\n'.join(pp))
+    log("fixed "+partName+" default.prop:\n"+'\n'.join(pp))
+
+  print("    -- repack ramdisk, repack "+imgFn+".img")
+  resp, rc = executeLog("python "+installFilesDir+"/packBoot.py pack "+imgFn+".img")
+  print("      (pack: "+resp+" "+str(rc)+")")
+  if os.path.isfile(imgFn+".img"):
     hndExcept()
   # Rename the new file, rmcBoot.img20xxxxxxxxxx (20... is the date/time stamp)
   for fid in os.listdir('.'):
-    if fid[:13] == 'rmcBoot.img20':
-      os.rename(fid, 'rmcBoot.img')
+    if fid[:len(imgFn)+6] == imgFn+'.img20':
+      os.rename(fid, imgFn+'.img')
       break
 
-  print("    -- write new boot.img to boot parition")
-  resp, rc = executeLog("adb push rmcBoot.img /cache/rmcBoot.img")
+  print("    -- write new "+imgFn+".img to "+partName+" parition")
+  resp, rc = executeLog("adb push "+imgFn+".img /cache/"+imgFn+".img")
   print("    "+str(rc)+" "+resp)
-  resp, rc = executeLog("adb shell dd if=/cache/rmcBoot.img of=/dev/block/mmcblk0p15 ibs=4096")
+  resp, rc = executeLog("adb shell dd if=/cache/"+imgFn+".img of="+partFid+" ibs=4096")
   print("    "+str(rc)+" "+resp)
-  resp, rc = executeLog("adb shell rm /cache/rmcBoot.img")
+  resp, rc = executeLog("adb shell rm /cache/"+imgFn+".img")
   print("    "+str(rc)+" "+resp)
 
-  state.fixBootPartition = True
-  return True
+  if partName[:4]=='boot':
+    state.fixBootPart = True
+    return True
+  else:
+    return false
   
 
 def installAppsFunc():
@@ -500,6 +525,12 @@ def resetBFFFunc():
     print("There was no 'boot partition has been fixed' state file")
 
 
+def testFunc():
+  print("In testFunc...")
+  aa = args
+  hndExcept()
+
+
 def listObjectivesFunc():
   print("\nList of objectives (phases or operations needed for revival) Case sensitive:")
   for ob in objectives:
@@ -523,8 +554,8 @@ objectives = [
   ['checkFiles', "Verifies that you have the needed files, apps, images, and programs."],
   ['adbMode', "Gets device into 'adb' mode."],
   ['replaceRecovery', "Replace the recovery partition with a full featured recovery program"], 
-  ['backupBoot', "Backs up boot and system partitions."],
-  ['fixBootPartition', "Rewrites the boot partition image with a 'fixed'(unlocked) ramdisk"],
+  ['backupPart', "Backs up boot (or other specified partition)."],
+  ['fixPart', "Rewrites the boot partition image with a 'fixed'(unlocked) ramdisk"],
   ['installApps', "Install VOIP phone app, uninstall old Meraki phone apps"],
   ['revive', "<--Install reviveMC74 apps --this is the principal objective--"],
   ['resetBFF', "(manual step) Reset the 'Boot partion Fixed Flag'"],
