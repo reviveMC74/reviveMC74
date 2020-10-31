@@ -223,7 +223,7 @@ def replaceRecoveryFunc():
 
   # Has the recovery partition already been replaced?
   isReplaced = False
-  resp, rc = execute("adb shell su -c grep secure default.prop", False)
+  resp, rc = execute("adb shell grep secure default.prop", False)
     # Note: In 'normal' mode, adb may run in non-superuser mode, added 'su -c'
   print("    rRf: adb shell resp: "+resp)
   
