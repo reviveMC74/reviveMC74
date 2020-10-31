@@ -319,7 +319,7 @@ def fixPartFunc():
   imgFn = 'rmc'+partName[:1].upper()+partName[1:]
 
   if partName=='boot' and fixBootPart and target!=fixPartFunc:
-    print("  --skipping fixPart for boot partition, already done"
+    print("  --skipping fixPart for boot partition, already done")
     return True  # For normal revive, if boot is fixed, skip it
     # If this is an explicit request to fixPart, do it
 
