@@ -105,24 +105,28 @@ def reviveMain(args):
     if checkFilesFunc():
       writeFile(filesPresentFid, "ok")
     else:
-      print("Not all needed programs are in the 'PATH' or not all files are present in this"
-        +" directory:")
+      print("Not all needed programs are in the 'PATH' or not all files are"
+        +" present in this directory:")
       for line in state.error:
         print("  --"+line)
 
       if "adbNeeded" in state.needed:
         print("\nADB/FASTBOOT programs needed.  See:\n"
           +"  https://www.xda-developers.com/install-adb-windows-macos-linux/\n"
-          +"  for instructions.  If you have adb and fastboot, make sure they are in the 'path'"
-          +"\n  (For experts, see: reviveMC74.py  neededProgs.adb[0] for the command we use to test.)"
+          +"  for instructions.  If you have adb and fastboot, make sure they"
+          +" are in the 'path'"
+          +"\n  (For experts, see: reviveMC74.py  neededProgs.adb[0] for the"
+          +" command we use to test.)"
         )
         
       if "unpNeeded" in state.needed:
         print("\nUNPACKBOOTIMG/MKBOOTIMG programs needed.  To download, see:\n"
           +"  https://forum.xda-developers.com/showthread.php?t=2073775\n"
-          +"  or: https://github.com/huaixzk/android_win_tool   for precompiled windows version\n"
+          +"  or: https://github.com/huaixzk/android_win_tool   for precompiled"
+          +" windows version\n"
           +"  or: https://github.com/osm0sis/mkbootimg   for the source code.\n"
-          +"  If you have unpackbootimg and mkbootimg, make sure they are in the 'path'"
+          +"  If you have unpackbootimg and mkbootimg, make sure they are in"
+          +" the 'path'"
         )
         
       return
@@ -219,7 +223,8 @@ def replaceRecoveryFunc():
 
   # Has the recovery partition already been replaced?
   isReplaced = False
-  resp, rc = execute("adb shell grep secure default.prop", False)
+  resp, rc = execute("adb shell su -c grep secure default.prop", False)
+    # Note: In 'normal' mode, adb may run in non-superuser mode, added 'su -c'
   print("    rRf: adb shell resp: "+resp)
   
   if findLine(resp, "ro.secure=0"):
@@ -257,7 +262,7 @@ def replaceRecoveryFunc():
       pass
 
     print("    --Rebooting")
-    resp, rc = execute("flash reboot")
+    resp, rc = execute("fasttboot reboot")
 
   state.replaceRecovery = True
   return True
@@ -275,11 +280,11 @@ def backupPartFunc():
   imgFn = 'rmc'+partName[:1].upper()+partName[1:]
 
   print("  --backup "+partName+" partition: "+partFid)
-  resp, rc = executeLog("adb shell dd if="+partFid+" of=/cache/"+imgFn+".img ibs=4096")
+  resp, rc = executeLog("adb shell su -c dd if="+partFid+" of=/cache/"+imgFn+".img ibs=4096")
   print("    "+str(rc)+" "+resp)
   resp, rc = executeLog("adb pull /cache/"+imgFn+".img .")
   print("    "+str(rc)+" "+resp)
-  resp, rc = executeLog("adb shell rm /cache/"+imgFn+".img")
+  resp, rc = executeLog("adb shell su -c rm /cache/"+imgFn+".img")
   print("    "+str(rc)+" "+resp)
 
   if os.path.isfile(imgFn+".img")==False:
@@ -312,6 +317,11 @@ def fixPartFunc():
   partName = arg.part  # Get name of partition to backup, defaults to 'boot'
   partFid = "/dev/block/platform/sdhci.1/by-name/"+partName
   imgFn = 'rmc'+partName[:1].upper()+partName[1:]
+
+  if partName=='boot' and fixBootPart and target!=fixPartFunc:
+    print("  --skipping fixPart for boot partition, already done"
+    return True  # For normal revive, if boot is fixed, skip it
+    # If this is an explicit request to fixPart, do it
 
   print("  --fixPartFunc "+imgFn+".img to "+partFid)
   try:
@@ -363,9 +373,9 @@ def fixPartFunc():
   print("    -- write new "+imgFn+".img to "+partName+" parition")
   resp, rc = executeLog("adb push "+imgFn+".img /cache/"+imgFn+".img")
   print("    "+str(rc)+" "+resp)
-  resp, rc = executeLog("adb shell dd if=/cache/"+imgFn+".img of="+partFid+" ibs=4096")
+  resp, rc = executeLog("adb shell su -c dd if=/cache/"+imgFn+".img of="+partFid+" ibs=4096")
   print("    "+str(rc)+" "+resp)
-  resp, rc = executeLog("adb shell rm /cache/"+imgFn+".img")
+  resp, rc = executeLog("adb shell su -c rm /cache/"+imgFn+".img")
   print("    "+str(rc)+" "+resp)
 
   if partName[:4]=='boot':
@@ -392,6 +402,7 @@ def installAppsFunc():
 
   # Install new apps
   for id in installApps:
+    print("  --installing app: "+id)
     resp, rc = executeLog("adb install -t "+installFilesDir+"/"+installApps[id])
     print("    install "+id+": "+resp)
   

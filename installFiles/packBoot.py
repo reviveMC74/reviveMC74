@@ -60,7 +60,7 @@ def pack(biFn):
 
   # In bootRamdisk dir, recreate the cpio archive
   os.chdir(rdDir)
-  print("cwd rd "+os.getcwd())
+  print("    cwd rd "+os.getcwd())
 
   fl = listDir('.')
   fl.sort()   # Sort filenames alphabetically
@@ -86,8 +86,8 @@ def pack(biFn):
 
 
   # Compress ramdisk
-  resp, rc = execute("ls -l")
-  print("pre-gzip "+os.getcwd()+": "+str(rc)+"\n"+resp)
+  #resp, rc = execute("ls -l")
+  #print("pre-gzip "+os.getcwd()+": "+str(rc)+"\n"+resp)
   try:
     os.remove(biFn+"-ramdisk.gz")
   except: pass
@@ -104,8 +104,8 @@ def pack(biFn):
     +" --cmdline '"+cmdline+"' --base "+base+" --pagesize "+pagesize \
     +" --output ../"+biFn+ts
   print("cmd: '"+cmd+"'")
-  resp, rc = execute("ls -l")
-  print("pre-mkbootimg "+os.getcwd()+": "+str(rc)+"\n"+resp)
+  #resp, rc = execute("ls -l")
+  #print("pre-mkbootimg "+os.getcwd()+": "+str(rc)+"\n"+resp)
   resp, rc = execute(cmd, True)
 
   os.chdir("..")
