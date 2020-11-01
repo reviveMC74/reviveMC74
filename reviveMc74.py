@@ -37,6 +37,7 @@ neededFiles = bunch(
 installApps = bunch(
   audTest = "audTest.apk",
   launcher = "com.teslacoilsw.launcher-4.1.0-41000-minAPI16.apk",
+  ssm = "revive.SSMService-debug.apk",
   reviveMC74 = "revive.MC74-debug.apk"
 )
 
@@ -184,8 +185,9 @@ def findLine(data, searchStr):
 
 def executeLog(cmd, showErr=False):
   '''Execute an operating system command and log the command and response'''
+  print("  Executing: '"+cmd+"'")
   ret = execute(cmd, showErr)
-  log(cmd+'\n  '+str(ret[1])+" "+ret[0])
+  logp("  '"+cmd+"'  (rc="+str(ret[1])+")\n"+prefix('    |', ret[0]))
   return ret
 
 
@@ -196,16 +198,26 @@ def log(msg):
   fp.close()
 
 
+def logp(msg):
+  print(msg)
+  log(msg)
+
+
+def prefix(prefix, msg):
+  if len(msg)==0:  return msg
+  msg = msg[:-1] if msg[-1]=='\n' else msg
+  return prefix+('\n'+prefix).join(msg.split('\n'))
+
 
 # FUNCTIONS FOR CARRYING OUT OBJECTIVES ----------------------------------------
 def reviveFunc():
-  print("  --(reviveFunc)") 
+  logp("--(reviveFunc)") 
   if fixPartFunc()==False:
-    print("Didn't fixPart")  
+    print("fixPartFunc failed")  
     return False
 
   if installAppsFunc()==False:
-    print("Didn't installApps")  
+    print("installAppsFunc failed")  
     return False
   return True
 
@@ -223,9 +235,8 @@ def replaceRecoveryFunc():
 
   # Has the recovery partition already been replaced?
   isReplaced = False
-  resp, rc = execute("adb shell grep secure default.prop", False)
+  resp, rc = executeLog("adb shell grep secure default.prop", False)
     # Note: In 'normal' mode, adb may run in non-superuser mode, added 'su -c'
-  print("    rRf: adb shell resp: "+resp)
   
   if findLine(resp, "ro.secure=0"):
     # This phone already has had the recovery replaced (ie shell cmd worked)
@@ -241,10 +252,9 @@ def replaceRecoveryFunc():
       if adbModeFunc("fastboot")==False: 
         return False
 
-    print("  --replaceRecovery partition")
-    print("    --Writng revovery partition image:  "+neededFiles.recoveryClockImg)
+    logp("\n--replaceRecovery partition")
+    logp("  --Writng revovery partition image:  "+neededFiles.recoveryClockImg)
     resp, rc = executeLog("fastboot flash recovery "+installFilesDir+"/"+neededFiles.recoveryClockImg)
-    print("    flash resp: "+resp)
 
     print('''
     The recovery partition has been updated; the MC74 is going to reboot now.
@@ -262,7 +272,7 @@ def replaceRecoveryFunc():
       pass
 
     print("    --Rebooting")
-    resp, rc = execute("fastboot reboot")
+    resp, rc = executeLog("fastboot reboot")
 
   state.replaceRecovery = True
   return True
@@ -279,15 +289,13 @@ def backupPartFunc():
   partFid = "/dev/block/platform/sdhci.1/by-name/"+partName
   imgFn = 'rmc'+partName[:1].upper()+partName[1:]
 
-  print("  --backup "+partName+" partition: "+partFid)
+  logp("\n--backupPart "+partName+" partition: "+partFid)
   resp, rc = executeLog("adb shell su -c dd if="+partFid+" of=/cache/"+imgFn+".img ibs=4096")
-  print("    "+str(rc)+" "+resp)
   resp, rc = executeLog("adb pull /cache/"+imgFn+".img .")
-  print("    "+str(rc)+" "+resp)
   resp, rc = executeLog("adb shell su -c rm /cache/"+imgFn+".img")
-  print("    "+str(rc)+" "+resp)
 
   if os.path.isfile(imgFn+".img")==False:
+    logp("!!Can't find "+imgFn+".img after pulling it")
     return False
   biSize = os.path.getsize(imgFn+".img")
   if biSize!=8192*1024 and partName[:4]!='boot':
@@ -296,7 +304,6 @@ def backupPartFunc():
     
   print("    -- unpack "+imgFn+".img and unpack the ramdisk")
   resp, rc = executeLog("python "+installFilesDir+"/packBoot.py unpack "+imgFn+".img")
-  print("      (unpack: "+resp+" "+str(rc)+")")
 
   try:
     os.remove(imgFn+".imgOrig")
@@ -318,12 +325,12 @@ def fixPartFunc():
   partFid = "/dev/block/platform/sdhci.1/by-name/"+partName
   imgFn = 'rmc'+partName[:1].upper()+partName[1:]
 
-  if partName=='boot' and fixBootPart and target!=fixPartFunc:
+  if partName=='boot' and state.fixBootPart and target!=fixPartFunc:
     print("  --skipping fixPart for boot partition, already done")
     return True  # For normal revive, if boot is fixed, skip it
     # If this is an explicit request to fixPart, do it
 
-  print("  --fixPartFunc "+imgFn+".img to "+partFid)
+  logp("\n--fixPartFunc "+imgFn+".img to "+partFid)
   try:
     os.remove(imgFn+'.img')
   except:  pass
@@ -331,37 +338,40 @@ def fixPartFunc():
   if partName[:4]=='boot':
     # Edit default.props, change 'ro.secure=1' to 'ro.secure=0'
     # and: persist.meraki.usb_debug=0 to ...=1
-    print("    -- edit default.prop to change ro.secure to = 0")
-    prop = readFile(imgFn+"Ramdisk/default.prop")
-    log("default.prop:\n"+prop)
-
+    logp("  -- edit default.prop to change ro.secure to = 0")
     try:
-      ii = prop.index('secure=')+7
-      prop = prop[:ii]+'0'+prop[ii+1:] # Change '1' to '0'
-    except:  print("  --failed to find/replace 'secure=1'")
-    try:
-      ii = prop.index('usb_debug=')+10
-      prop = prop[:ii]+'1'+prop[ii+1:] # Change '0' to '1'
-    except:  print("  --failed to find/replace 'secure=1'")
-    log("itermediate default.prop:\n"+prop)
+      fn = imgFn+"Ramdisk/default.prop"
+      prop = readFile(fn)
+      log("  default.prop:\n"+prefix('   |', prop))
 
-    # other fixes (not implemented yet)
-    print("  (UIF create sym link from /ssm to /sdcard/ssm)");
-    print("  (UIF change prompt to be '\\n# ' (shorten it))");
+      try:
+        ii = prop.index('secure=')+7
+        prop = prop[:ii]+'0'+prop[ii+1:] # Change '1' to '0'
+      except:  print("  --failed to find/replace 'secure=1'")
+      try:
+        ii = prop.index('usb_debug=')+10
+        prop = prop[:ii]+'1'+prop[ii+1:] # Change '0' to '1'
+      except:  print("  --failed to find/replace 'secure=1'")
+      log("itermediate default.prop:\n"+prop)
 
-    # Remove \r from \r\n on windows systems
-    pp = []
-    for ln in prop.split('\n'):
-      if ln[-1:]=='\r':  ln = ln[:-1]
-      if len(ln)>0:
-        print("      .."+ln)
-        pp.append(ln)
-    writeFile(imgFn+"Ramdisk/default.prop", '\n'.join(pp))
-    log("fixed "+partName+" default.prop:\n"+'\n'.join(pp))
+      # other fixes (not implemented yet)
+      print("  (UIF create sym link from /ssm to /sdcard/ssm)");
+      print("  (UIF change prompt to be '\\n# ' (shorten it))");
 
-  print("    -- repack ramdisk, repack "+imgFn+".img")
+      # Remove \r from \r\n on windows systems
+      pp = []
+      for ln in prop.split('\n'):
+        if ln[-1:]=='\r':  ln = ln[:-1]
+        if len(ln)>0:
+          print("      .."+ln)
+          pp.append(ln)
+      writeFile(imgFn+"Ramdisk/default.prop", '\n'.join(pp))
+      log("    fixed "+partName+" default.prop:\n"+'\n'.join(pp))
+    except IOError as err:
+      logp("  !! Can't find: "+fn+" in "+os.getcwd())
+
+  logp("  -- repack ramdisk, repack "+imgFn+".img")
   resp, rc = executeLog("python "+installFilesDir+"/packBoot.py pack "+imgFn+".img")
-  print("      (pack: "+resp+" "+str(rc)+")")
   if os.path.isfile(imgFn+".img"):
     hndExcept()
   # Rename the new file, rmcBoot.img20xxxxxxxxxx (20... is the date/time stamp)
@@ -370,13 +380,11 @@ def fixPartFunc():
       os.rename(fid, imgFn+'.img')
       break
 
-  print("    -- write new "+imgFn+".img to "+partName+" parition")
+  logp("  -- write new "+imgFn+".img to "+partName+" parition")
   resp, rc = executeLog("adb push "+imgFn+".img /cache/"+imgFn+".img")
-  print("    "+str(rc)+" "+resp)
-  resp, rc = executeLog("adb shell su -c dd if=/cache/"+imgFn+".img of="+partFid+" ibs=4096")
-  print("    "+str(rc)+" "+resp)
-  resp, rc = executeLog("adb shell su -c rm /cache/"+imgFn+".img")
-  print("    "+str(rc)+" "+resp)
+  resp, rc = executeLog("adb shell dd if=/cache/"+imgFn+".img of="+partFid
+    +" ibs=4096")
+  resp, rc = executeLog("adb shell rm /cache/"+imgFn+".img")
 
   if partName[:4]=='boot':
     state.fixBootPart = True
@@ -389,22 +397,18 @@ def installAppsFunc():
   if adbModeFunc("normal")==False:  # Get into normal operation
     return False
 
-  print("  --install apps, uinstall dialer2, droidNode, droidNodeSystemSvc")
+  logp("\n--installAppsFunc, uinstall dialer2, droidNode, droidNodeSystemSvc")
 
   # Uninstall apps
   resp, rc = executeLog("adb rm /system/app/DroidNode.apk")
-  print("    rm DroidNode.apk: "+resp+" "+str(rc))
   resp, rc = executeLog("adb rm /systemls/app/DroidNodeSystemSvcs.apk")
-  print("    rm DroidNodeSystemSvcs.apk: "+resp+" "+str(rc))
   resp, rc = executeLog("adb uninstall package:com.meraki.dialer2")
-  print("    uninstall dialer2: "+resp+" "+str(rc))
   # Perhaps run: ps |grep meraki and kill process?  perhaps reboot 
 
   # Install new apps
   for id in installApps:
     print("  --installing app: "+id)
     resp, rc = executeLog("adb install -t "+installFilesDir+"/"+installApps[id])
-    print("    install "+id+": "+resp)
   
   state.installApps = True
   return True
@@ -414,7 +418,7 @@ def checkFilesFunc():
   succeeded = True 
 
   for id in neededProgs:
-    succeeded &= chkProg(neededProgs[id]) # Execute commands to verify programs installed
+    succeeded &= chkProg(neededProgs[id]) # Execute cmds to verify programs installed
 
   for id in neededFiles:
     succeeded &= chkFile(neededFiles[id]) # Verify files exist in installFiles dir
@@ -434,10 +438,9 @@ def adbModeFunc(targetMode="adb"):
   '''
   isAdb = False
   isFastboot = False
-  isNormal = False    # Normal is: booted into normal device operation, not recovery mode
+  isNormal = False  # Normal is: booted into normal dev operation, not recovery mode
 
-  resp, rc = execute("adb devices", False)
-  print("    adbDev: "+resp)
+  resp, rc = executeLog("adb devices", False)
 
   # Figure out what mode we are currently in
   currentMode = "unknown"
@@ -449,9 +452,7 @@ def adbModeFunc(targetMode="adb"):
     isNormal = True
     isAdb = True  # Normal mode (after fixing) should also adb enabled.
   else:
-    resp, rc = execute("fastboot devices", False)
-    if len(resp):
-      print("  fastboot Devices: "+resp+" ("+str(len(resp))+")")
+    resp, rc = executeLog("fastboot devices", False)
     ln = findLine(resp, "\tfastboot")
     if ln:
       currentMode = "fastboot"
@@ -468,7 +469,7 @@ def adbModeFunc(targetMode="adb"):
 
   elif isAdb and targetMode=="fastboot":
     print("    --Changing from adb mode to fastboot mode")
-    resp, rc = execute("adb reboot bootloader")
+    resp, rc = executeLog("adb reboot bootloader")
 
   elif isAdb and targetMode=="adb":
     currentMode = targetMode  # normal mode should be eqivalent to adb after fixing
@@ -498,7 +499,7 @@ def adbModeFunc(targetMode="adb"):
 
   elif isNormal==False and targetMode=="normal":
     print("    --Changing from adb mode to normal device mode")
-    resp, rc = execute("adb reboot")
+    resp, rc = executeLog("adb reboot")
 
   else:
     print("adbMode request to go from '"+currentMode+"' mode to '"+targetMode+"'.")
@@ -512,7 +513,7 @@ def adbModeFunc(targetMode="adb"):
     if targetMode == "normal":   searchStr = "device"
 
     for ii in range(0, 12):
-      resp, rc = execute(cmd+" devices")
+      resp, rc = executeLog(cmd+" devices")
       ln = findLine(resp, searchStr)
       if ln:
         state.serialNo = ln.split('\t')[0]
@@ -530,6 +531,7 @@ def adbModeFunc(targetMode="adb"):
 
 
 def resetBFFFunc():
+  logp("\n--resetBFFFunc")
   if os.path.isfile(filesPresentFid):
     os.remove(filePresentFid)
   if os.path.isfile(bootFixedFid):
@@ -540,9 +542,9 @@ def resetBFFFunc():
     print("There was no 'boot partition has been fixed' state file")
 
 
-def testFunc():
-  print("In testFunc...")
-  aa = args
+def manualFunc():
+  logp("\n--manualFunc Enter commands on console...")
+  aa = arg
   hndExcept()
 
 
