@@ -236,7 +236,6 @@ def replaceRecoveryFunc():
   # Has the recovery partition already been replaced?
   isReplaced = False
   resp, rc = executeLog("adb shell grep secure default.prop", False)
-    # Note: In 'normal' mode, adb may run in non-superuser mode, added 'su -c'
   
   if findLine(resp, "ro.secure=0"):
     # This phone already has had the recovery replaced (ie shell cmd worked)
@@ -290,9 +289,9 @@ def backupPartFunc():
   imgFn = 'rmc'+partName[:1].upper()+partName[1:]
 
   logp("\n--backupPart "+partName+" partition: "+partFid)
-  resp, rc = executeLog("adb shell su -c dd if="+partFid+" of=/cache/"+imgFn+".img ibs=4096")
+  resp, rc = executeLog("adb shell dd if="+partFid+" of=/cache/"+imgFn+".img ibs=4096")
   resp, rc = executeLog("adb pull /cache/"+imgFn+".img .")
-  resp, rc = executeLog("adb shell su -c rm /cache/"+imgFn+".img")
+  resp, rc = executeLog("adb shell rm /cache/"+imgFn+".img")
 
   if os.path.isfile(imgFn+".img")==False:
     logp("!!Can't find "+imgFn+".img after pulling it")
