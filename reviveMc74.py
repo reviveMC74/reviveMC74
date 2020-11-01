@@ -262,7 +262,7 @@ def replaceRecoveryFunc():
       pass
 
     print("    --Rebooting")
-    resp, rc = execute("fasttboot reboot")
+    resp, rc = execute("fastboot reboot")
 
   state.replaceRecovery = True
   return True
