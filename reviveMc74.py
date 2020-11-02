@@ -569,7 +569,9 @@ def resetBFFFunc():
 def manualFunc():
   logp("\n--manualFunc Enter commands on console...")
   aa = arg
-  hndExcept()
+  try:
+    hndExcept()
+  except: hndExcept()
 
 
 def listObjectivesFunc():

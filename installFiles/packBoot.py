@@ -3,7 +3,11 @@
 repack the ramdisk directory back into a ramdisk and pack with kernel
 @author: ribo
 '''
-import sys, os, time, subprocess, shutil
+import sys, os, time, subprocess, shutil, traceback
+# In reviveMC74.py, packBoot.py is called from with the installFiles directory
+# ribou.py is the cwd (parent of installFiles, add cwd to path
+sys.path.append(os.getcwd())
+
 from ribou import *
 from datetime import datetime
 
@@ -22,6 +26,8 @@ def unpack(biFn):
   print("cwd "+os.getcwd())
 
   resp, rc = execute("unpackbootimg -i ../"+biFn)
+  print(str(type(resp)))
+  print(str(type(rc)))
   print("unpackbootimg "+biFn+": "+str(rc)+"\n"+resp)
   
   resp, rc = execute("ls -l")
@@ -135,17 +141,18 @@ if __name__ == '__main__':
       args = []
       argList = sys.argv[2:]  # Remove the program name and pack/unpack mode token
       for arg in argList:
-	if '=' in arg:
-	  args.remove(arg)
-	  arg = arg.split('=')  # Handle name=val arguments
-	  locals()[arg[0]] = arg[1]  # Add name to locals
-	else:
-	  args.append(arg)
+        if '=' in arg:
+          args.remove(arg)
+          arg = arg.split('=')  # Handle name=val arguments
+          locals()[arg[0]] = arg[1]  # Add name to locals
+        else:
+          args.append(arg)
 
       biFn = args[0] if len(args)>0 else "boot.img"
       if op == 'pack':
-	pack(biFn)
+        pack(biFn)
       else:
-	unpack(biFn)
+        unpack(biFn)
   except Exception as ex:
-    hndExcept()
+    # (Do not use hndExcept, it reads from stdin, and would hang reviveMC74.py)
+    print("packBoot exception: "+traceback.format_exc())
