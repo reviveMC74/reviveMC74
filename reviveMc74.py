@@ -37,7 +37,6 @@ neededFiles = bunch(
 )
 
 installApps = bunch(
-  audTest = "audTest.apk",
   launcher = "com.teslacoilsw.launcher-4.1.0-41000-minAPI16.apk",
   ssm = "revive.SSMService-debug.apk",
   reviveMC74 = "revive.MC74-debug.apk"
@@ -185,7 +184,7 @@ def findLine(data, searchStr):
       return line
 
 
-def executeLog(cmd, showErr=False):
+def executeLog(cmd, showErr=True):
   '''Execute an operating system command and log the command and response'''
   print("  Executing: '"+cmd+"'")
   ret = execute(cmd, showErr)
@@ -237,7 +236,7 @@ def replaceRecoveryFunc():
 
   # Has the recovery partition already been replaced?
   isReplaced = False
-  resp, rc = executeLog("adb shell grep secure default.prop", False)
+  resp, rc = executeLog("adb shell grep secure default.prop")
   
   if findLine(resp, "ro.secure=0"):
     # This phone already has had the recovery replaced (ie shell cmd worked)
@@ -313,8 +312,8 @@ def backupPartFunc():
 
   if partName[:4]=='boot':
     state.backupBoot = True
-    state.fixBootPart = False  # Newly backuped up boot.img needs to be packed and
-      # written out / flashed
+    state.fixBootPart = False  # Newly backuped up boot.img needs to be packed
+      # and written out / flashed
     return True
   else: 
     return False
@@ -409,13 +408,14 @@ def installAppsFunc():
   # Uninstall apps
   resp, rc = executeLog("adb rm /system/app/DroidNode.apk")
   resp, rc = executeLog("adb rm /systemls/app/DroidNodeSystemSvcs.apk")
+  resp, rc = executeLog("adb uninstall ribo.audtest")
   resp, rc = executeLog("adb uninstall package:com.meraki.dialer2")
   # Perhaps run: ps |grep meraki and kill process?  perhaps reboot 
 
-  # Install new apps
+  # Install/update new apps
   for id in installApps:
     print("  --installing app: "+id)
-    resp, rc = executeLog("adb install -t "+installFilesDir+"/"+installApps[id])
+    resp, rc = executeLog("adb install -t -r "+installFilesDir+"/"+installApps[id])
   
   state.installApps = True
   return True
@@ -447,7 +447,7 @@ def adbModeFunc(targetMode="adb"):
   isFastboot = False
   isNormal = False  # Normal is: booted into normal dev operation, not recovery mode
 
-  resp, rc = executeLog("adb devices", False)
+  resp, rc = executeLog("adb devices")
 
   # Figure out what mode we are currently in
   currentMode = "unknown"
@@ -459,7 +459,7 @@ def adbModeFunc(targetMode="adb"):
     isNormal = True
     isAdb = True  # Normal mode (after fixing) should also adb enabled.
   else:
-    resp, rc = executeLog("fastboot devices", False)
+    resp, rc = executeLog("fastboot devices")
     ln = findLine(resp, "\tfastboot")
     if ln:
       currentMode = "fastboot"
