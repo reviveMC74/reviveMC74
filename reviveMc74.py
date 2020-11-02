@@ -37,8 +37,8 @@ neededFiles = bunch(
 )
 
 installFiles = bunch(
-  lights = ["lights", "/system/bin"],
-  hex = ["hex", "/system/bin"]
+  lights = ["lights", "/system/bin", "chmod 755"],
+  hex = ["hex", "/system/bin", "chmod 755"]
 )
 
 installApps = bunch(
@@ -411,8 +411,8 @@ def installAppsFunc():
   logp("\n--installAppsFunc, uinstall dialer2, droidNode, droidNodeSystemSvc")
 
   # Uninstall apps
-  resp, rc = executeLog("adb rm /system/app/DroidNode.apk")
-  resp, rc = executeLog("adb rm /systemls/app/DroidNodeSystemSvcs.apk")
+  resp, rc = executeLog("adb shell rm /system/app/DroidNode.apk")
+  resp, rc = executeLog("adb shell rm /systemls/app/DroidNodeSystemSvcs.apk")
   resp, rc = executeLog("adb uninstall ribo.audtest")
   resp, rc = executeLog("adb uninstall package:com.meraki.dialer2")
   # Perhaps run: ps |grep meraki and kill process?  perhaps reboot 
@@ -420,8 +420,12 @@ def installAppsFunc():
   # Install programs
   for id in installFiles:
     print("  --install file/program: "+id)
-    resp, rc = executeLog("adb push "+installFilesDir+"/"+installFiles[id][0] 
-      +" "+installFiles[id][1]+'/'+installFiles[id][0])  
+    instFl = installFiles[id]
+    resp, rc = executeLog("adb push "+installFilesDir+"/"+instFl[0] 
+      +" "+instFl[1]+'/'+instFl[0]) 
+    if len(instFl)>2:  # If there is a fixup cmd, do it (usually chmod)
+      resp, rc = executeLog("adb shell "+instFl[2]+" "+instFl[1]+'/'+instFl[0])
+
   # Install/update new apps
   for id in installApps:
     print("  --installing app: "+id)
