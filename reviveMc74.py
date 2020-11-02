@@ -33,7 +33,12 @@ neededProgs = bunch(  # These are commands that demonstrate that needed programs
 
 neededFiles = bunch(
   recoveryClockImg = "recovery-clockwork-touch-6.0.4.7-mc74v2.img",
-  packBootPy = "packBoot.py",
+  packBootPy = "packBoot.py"
+)
+
+installFiles = bunch(
+  lights = ["lights", "/system/bin"],
+  hex = ["hex", "/system/bin"]
 )
 
 installApps = bunch(
@@ -412,6 +417,11 @@ def installAppsFunc():
   resp, rc = executeLog("adb uninstall package:com.meraki.dialer2")
   # Perhaps run: ps |grep meraki and kill process?  perhaps reboot 
 
+  # Install programs
+  for id in installFiles:
+    print("  --install file/program: "+id)
+    resp, rc = executeLog("adb push "+installFilesDir+"/"+installFiles[id][0] 
+      +" "+installFiles[id][1]+'/'+installFiles[id][0])  
   # Install/update new apps
   for id in installApps:
     print("  --installing app: "+id)
@@ -429,6 +439,9 @@ def checkFilesFunc():
 
   for id in neededFiles:
     succeeded &= chkFile(neededFiles[id]) # Verify files exist in installFiles dir
+
+  for id in installFiles:
+    succeeded &= chkFile(installFiles[id][0]) # (Programs/Files to be installed)
 
   for id in installApps:
     succeeded &= chkFile(installApps[id]) # (Apps are also in installFiles dir)
