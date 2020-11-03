@@ -101,10 +101,12 @@ def pack(biFn):
   base = readFile(biFn+"-base")[:-1]
   pagesize = readFile(biFn+"-pagesize")[:-1]
   ts = datetime.now().strftime("%y%m%d%H%M")
-  cmd = "mkbootimg --kernel "+biFn+"-zImage --ramdisk "+biFn+"-ramdisk.gz" \
-    +" --cmdline '"+cmdline+"' --base "+base+" --pagesize "+pagesize \
-    +" --output ../"+biFn+ts
-  print("cmd: '"+cmd+"'")
+  cmd = ["mkbootimg", "--kernel", biFn+"-zImage",
+    "--ramdisk", biFn+"-ramdisk.gz", "--cmdline", cmdline,
+    "--base", "0x"+base, "--pagesize", pagesize, "--output", "../"+biFn+ts ]
+  # Note: --cmdline contains spaces, we must pass the command as tokens so
+  # execute() won't .split(' ') the command to prepare the args array
+  print("cmd: '"+str(cmd)+"'")
   resp, rc = execute(cmd)
   print("(rc="+str(rc)+") resp:\n"+prefix("  |", resp))
 

@@ -346,8 +346,8 @@ def execute(cmd, showErr=True, returnStr=True):
   import subprocess
   if type(cmd)==str:
     cmd = cmd.split(' ')
-  # Remove ' ' tokens caused by multiple spaces in str             
-  cmd = [xx for xx in cmd if xx!='']
+    # Remove ' ' tokens caused by multiple spaces in str             
+    cmd = [xx for xx in cmd if xx!='']
   proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   out, err = proc.communicate()
   if type(out)==bytes:  # Needed for python 3 (stupid python)
