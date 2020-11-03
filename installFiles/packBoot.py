@@ -26,9 +26,7 @@ def unpack(biFn):
   print("cwd "+os.getcwd())
 
   resp, rc = execute("unpackbootimg -i ../"+biFn)
-  print(str(type(resp)))
-  print(str(type(rc)))
-  print("unpackbootimg "+biFn+": "+str(rc)+"\n"+resp)
+  print("unpackbootimg "+biFn+": (rc="+str(rc)+") resp:\n"+prefix("  |", resp))
   
   resp, rc = execute("ls -l")
   print("ls "+os.getcwd()+": "+str(rc)+"\n"+resp)
@@ -112,7 +110,8 @@ def pack(biFn):
   print("cmd: '"+cmd+"'")
   #resp, rc = execute("ls -l")
   #print("pre-mkbootimg "+os.getcwd()+": "+str(rc)+"\n"+resp)
-  resp, rc = execute(cmd, True)
+  resp, rc = execute(cmd)
+  print("(rc="+str(rc)+") resp:\n"+prefix("  |", resp))
 
   os.chdir("..")
   writeFile(fn+"LsRdNew", lsRdNew)

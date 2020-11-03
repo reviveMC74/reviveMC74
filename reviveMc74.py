@@ -383,13 +383,16 @@ def fixPartFunc():
 
   logp("  -- repack ramdisk, repack "+imgFn+".img")
   resp, rc = executeLog("python "+installFilesDir+"/packBoot.py pack "+imgFn+".img")
-  if os.path.isfile(imgFn+".img"):
+  if os.path.isfile(imgFn+".img"):  # Make sure no .img file, we will rename
     hndExcept()
+  resp, rc = executeLog("ls -l "+imgFn+".img*")
+
   # Rename the new file, rmcBoot.img20xxxxxxxxxx (20... is the date/time stamp)
   for fid in os.listdir('.'):
     if fid[:len(imgFn)+6] == imgFn+'.img20':
       os.rename(fid, imgFn+'.img')
       break
+  resp, rc = executeLog("ls -l "+imgFn+".img*")
 
   logp("  -- write new "+imgFn+".img to "+partName+" parition")
   resp, rc = executeLog("adb push "+imgFn+".img /cache/"+imgFn+".img")
