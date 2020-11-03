@@ -224,6 +224,18 @@ def prefix(prefix, msg):
   return prefix+('\n'+prefix).join(msg.split('\n'))
 
 
+def listDir(dir, recursive=True, search=''):
+  # Replacement for 'find . -print' on Windows
+  lst = []
+  for fn in os.listdir(dir):
+    subdir = dir+'/'+fn
+    if search in subdir: 
+      lst.append(subdir)
+    if recursive and os.path.isdir(subdir):
+      lst.extend(listDir(subdir))
+  return lst
+
+
 # FUNCTIONS FOR CARRYING OUT OBJECTIVES ----------------------------------------
 def reviveFunc():
   logp("--(reviveFunc)") 
@@ -305,7 +317,7 @@ def backupPartFunc():
 
   logp("\n--backupPart "+partName+" partition: "+partFid)
   resp, rc = executeLog("adb shell dd if="+partFid+" of=/cache/"+imgFn+".img ibs=4096")
-  resp, rc = executeLog("adb pull /cache/"+imgFn+".img .")
+  resp, rc = execute("adb pull /cache/"+imgFn+".img .")
   resp, rc = executeLog("adb shell rm /cache/"+imgFn+".img")
 
   if os.path.isfile(imgFn+".img")==False:
@@ -392,19 +404,20 @@ def fixPartFunc():
 
   logp("  -- repack ramdisk, repack "+imgFn+".img")
   resp, rc = executeLog("python "+installFilesDir+"/packBoot.py pack "+imgFn+".img")
+  logp(prefix("__|", '\n'.join(listDir(os.getcwd(), False, 'rmcBoot.img'))))
   if os.path.isfile(imgFn+".img"):  # Make sure no .img file, we will rename
     hndExcept()
-  resp, rc = executeLog("ls -l "+imgFn+".img*")
+  
 
   # Rename the new file, rmcBoot.img20xxxxxxxxxx (20... is the date/time stamp)
   for fid in os.listdir('.'):
     if fid[:len(imgFn)+6] == imgFn+'.img20':
       os.rename(fid, imgFn+'.img')
       break
-  resp, rc = executeLog("ls -l "+imgFn+".img*")
+  logp(prefix("..|", '\n'.join(listDir(os.getcwd(), False, 'rmcBoot.img'))))
 
   logp("  -- write new "+imgFn+".img to "+partName+" parition")
-  resp, rc = executeLog("adb push "+imgFn+".img /cache/"+imgFn+".img")
+  resp, rc = execute("adb push "+imgFn+".img /cache/"+imgFn+".img")
   resp, rc = executeLog("adb shell dd if=/cache/"+imgFn+".img of="+partFid
     +" ibs=4096")
   resp, rc = executeLog("adb shell rm /cache/"+imgFn+".img")

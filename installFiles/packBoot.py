@@ -27,9 +27,7 @@ def unpack(biFn):
 
   resp, rc = execute("unpackbootimg -i ../"+biFn)
   print("unpackbootimg "+biFn+": (rc="+str(rc)+") resp:\n"+prefix("  |", resp))
-  
-  resp, rc = execute("ls -l")
-  print("ls "+os.getcwd()+": "+str(rc)+"\n"+resp)
+    print("ls "+os.getcwd()+":\n"+listDir(os.getcwd(), False))
 
   resp, rc = execute("gunzip "+biFn+"-ramdisk.gz")
   print("gunzip "+biFn+"-ramdisk.gz: "+str(rc)+"\n"+resp)
@@ -90,8 +88,6 @@ def pack(biFn):
 
 
   # Compress ramdisk
-  #resp, rc = execute("ls -l")
-  #print("pre-gzip "+os.getcwd()+": "+str(rc)+"\n"+resp)
   try:
     os.remove(biFn+"-ramdisk.gz")
   except: pass
@@ -108,8 +104,6 @@ def pack(biFn):
     +" --cmdline '"+cmdline+"' --base "+base+" --pagesize "+pagesize \
     +" --output ../"+biFn+ts
   print("cmd: '"+cmd+"'")
-  #resp, rc = execute("ls -l")
-  #print("pre-mkbootimg "+os.getcwd()+": "+str(rc)+"\n"+resp)
   resp, rc = execute(cmd)
   print("(rc="+str(rc)+") resp:\n"+prefix("  |", resp))
 
@@ -117,12 +111,14 @@ def pack(biFn):
   writeFile(fn+"LsRdNew", lsRdNew)
 
 
-def listDir(dir):  # Replacement for 'find . -print' on Windows
+def listDir(dir, recursive=True, search=''):
+  # Replacement for 'find . -print' on Windows
   lst = []
   for fn in os.listdir(dir):
     subdir = dir+'/'+fn
-    lst.append(subdir)
-    if os.path.isdir(subdir):
+    if search in subdir: 
+      lst.append(subdir)
+    if recursive and os.path.isdir(subdir):
       lst.extend(listDir(subdir))
   return lst
 
