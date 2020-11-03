@@ -19,7 +19,8 @@ from ribou import *
 
 logFid = "reviveMC74.log"
 installFilesDir = "installFiles"
-filesPresentFid = "filesPresent.flag"  # If this file exists, we checked that needed files are here
+filesPresentFid = "filesPresent.flag"
+  # If this file exists, we checked that needed files are here
 
 neededProgs = bunch(  # These are commands that demonstrate that needed programs are in the
   # PATH and that they execute (ie not just the filename of the program
@@ -47,6 +48,14 @@ installApps = bunch(
   reviveMC74 = "revive.MC74-debug.apk"
 )
 
+updateFiles = '''
+copy /y \andrStud\SSMservice\app\build\outputs\apk\debug\revive.SSMService-debug.apk \git\reviveMC74\installFiles
+copy /y \git\MC74\app\build\outputs\apk\debug\revive.MC74-debug.apk \git\reviveMC74\installFiles
+
+copy /y \andrStud\hex\app\.cxx\cmake\debug\armeabi-v7a\hex \git\reviveMC74\installFiles
+copy /y \andrStud\hex\app\.cxx\cmake\debug\armeabi-v7a\lights \git\reviveMC74\installFiles
+copy /y \andrStud\hex\app\.cxx\cmake\debug\armeabi-v7a\sendevent \git\reviveMC74\installFiles
+''' 
 
 options = bunch(
   #sendOid=[None, 'o:', 'Name of object to send as body of command'],
