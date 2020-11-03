@@ -57,6 +57,7 @@ copy /y \andrStud\hex\app\.cxx\cmake\debug\armeabi-v7a\lights \git\reviveMC74\in
 copy /y \andrStud\hex\app\.cxx\cmake\debug\armeabi-v7a\sendevent \git\reviveMC74\installFiles
 ''' 
 
+
 options = bunch(
   #sendOid=[None, 'o:', 'Name of object to send as body of command'],
   #sessionMode = [False, 's', 'Loop reading commands from stdin'],
@@ -589,6 +590,15 @@ def resetBFFFunc():
     print("  (Meaning that normal restart of MC74 is not expected to have a useful 'adb' server)")
   else:
     print("There was no 'boot partition has been fixed' state file")
+
+
+def startPhoneFunc():
+  logp("\n--startPhoneFunc")
+  resp, rc = executeLog("adb am startservice ribo.ssm/.SSMservice");
+  resp, rc = executeLog("adb am start revive.MC74/org.linphone.dialer.DialerActivity");
+  try:
+    hndExcept()
+  except: hndExcept()
 
 
 def manualFunc():

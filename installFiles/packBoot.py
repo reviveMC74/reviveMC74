@@ -27,7 +27,8 @@ def unpack(biFn):
 
   resp, rc = execute("unpackbootimg -i ../"+biFn)
   print("unpackbootimg "+biFn+": (rc="+str(rc)+") resp:\n"+prefix("  |", resp))
-  print("ls "+os.getcwd()+":\n"+listDir(os.getcwd(), False))
+  print("ls "+os.getcwd()+":\n"+prefix("--|", '\n'.join(listDir(os.getcwd(),
+    False))))
 
   resp, rc = execute("gunzip "+biFn+"-ramdisk.gz")
   print("gunzip "+biFn+"-ramdisk.gz: "+str(rc)+"\n"+resp)
