@@ -128,5 +128,5 @@ reviveMC74 keeps the original Android (JellyBean api level 17) operating system 
 
 ### Further Questions
 
-If you have any further questions, please talk with our community at https://reddit./com/r/ReviveMC74.
+If you have any further questions, please talk with our community at https://reddit.com/r/ReviveMC74.
 Further findings, information, and troubleshooting are available from our community via our subreddit!
