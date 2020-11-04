@@ -30,6 +30,8 @@ neededProgs = bunch(  # These are commands that demonstrate that needed programs
   mkbootimg = ["mkbootimg", "unpNeeded"],
   chmod = ["chmod", "upnNeeded"], 
   cpio = ["cpio", "upnNeeded"], 
+  gzip = ["gzip -V", "gzipNeeded"], 
+  gunzip = ["gunzip -V", "gzipNeeded"], 
 )
 
 neededFiles = bunch(
@@ -144,6 +146,16 @@ def reviveMain(args):
           +"  or: https://github.com/osm0sis/mkbootimg   for the source code.\n"
           +"  If you have unpackbootimg and mkbootimg, make sure they are in"
           +" the 'path'"
+        )
+        
+      if "gzipNeeded" in state.needed:
+        print("\nGZIP/GUNZIP programs needed.  To for windows, see:\n"
+          +"  http://gnuwin32.sourceforge.net/packages/gzip.htm\n"
+          +"  http://gnuwin32.sourceforge.net/downlinks/gzip-bin-zip.php\n\n"
+          +"Afer you download the gzip-1.3.12-1-bin.zip file, open it and copy" 
+          +" gzip.exe into your 'path'.\n"
+          +"Also, copy 'gunzip.bat' from the 'installFiles' directory into a"
+          +" directory that is in your 'path'" 
         )
         
       return
@@ -584,12 +596,11 @@ def resetBFFFunc():
   logp("\n--resetBFFFunc")
   if os.path.isfile(filesPresentFid):
     os.remove(filePresentFid)
-  if os.path.isfile(bootFixedFid):
-    os.remove(bootFixedFid)
-    print("reviveMC74 no longer thinks the boot partition has been updated.")
-    print("  (Meaning that normal restart of MC74 is not expected to have a useful 'adb' server)")
+    print("The filesPresent.flag file was removed, next time you run"
+      +" reviveMC74, it will recheck that you have all the needed files"
+      +" and programs.")
   else:
-    print("There was no 'boot partition has been fixed' state file")
+    print("(There was no 'filesPresent.flag file.)")
 
 
 def startPhoneFunc():
