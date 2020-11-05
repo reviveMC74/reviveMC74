@@ -15,7 +15,9 @@ from datetime import datetime
 def unpack(biFn):
   '''Unpack a boot image file
   '''
-  fn, ext = biFn.split('.')
+  try:
+    fn, ext = biFn.split('.')
+  except: fn = biFn
   unDir = fn+"Unpack"
   try:
     shutil.rmtree(unDir)
@@ -27,6 +29,14 @@ def unpack(biFn):
 
   resp, rc = execute("unpackbootimg -i ../"+biFn)
   print("unpackbootimg "+biFn+": (rc="+str(rc)+") resp:\n"+prefix("  |", resp))
+  if rc==1:
+    print("  (This partition img was probably not a boot partition.)")
+    os.chdir("..")  # Didn't unpack, back out and remove ..Unpack dir
+    try:
+      shutil.rmtree(unDir)
+    except:
+      pass  # Directory may exist
+    return False
   print("ls "+os.getcwd()+":\n"+prefix("--|", '\n'.join(listDir(os.getcwd(),
     False))))
 
@@ -57,7 +67,9 @@ def pack(biFn):
      from booUnpack dir
   '''
   print("pack: "+biFn)
-  fn, ext = biFn.split('.')
+  try:
+    fn, ext = biFn.split('.')
+  except: fn = biFn
   unDir = fn+"Unpack"
   rdDir = fn+"Ramdisk"
 

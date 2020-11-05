@@ -70,6 +70,10 @@ options = bunch(
 arg = bunch(  # Place to store args for objective funcs to use
   part = "boot",  # Target partition to backup or fix/install, ie 'boot' or 'boot2'
 )
+# Options:
+#   part  -- specify which parition to read or write(flash) data to
+#   img   -- full filename of disk image to write/flash in flashPart objective
+
 
 def reviveMain(args):
   global target, arg
@@ -252,8 +256,8 @@ def listDir(dir, recursive=True, search=''):
 # FUNCTIONS FOR CARRYING OUT OBJECTIVES ----------------------------------------
 def reviveFunc():
   logp("--(reviveFunc)") 
-  if fixPartFunc()==False:
-    print("fixPartFunc failed")  
+  if flashPartFunc()==False:
+    print("flashPartFunc failed")  
     return False
 
   if installAppsFunc()==False:
@@ -326,36 +330,41 @@ def backupPartFunc():
 
   partName = arg.part  # Get name of partition to backup, defaults to 'boot'
   partFid = "/dev/block/platform/sdhci.1/by-name/"+partName
-  imgFn = 'rmc'+partName[:1].upper()+partName[1:]
+  if 'img' in arg:
+    imgFn = arg.img
+    makeOrig = False
+  else:
+    imgFn = 'rmc'+partName[:1].upper()+partName[1:]+".img"
+    makeOrig = True
+
 
   logp("\n--backupPart "+partName+" partition: "+partFid)
-  resp, rc = executeLog("adb shell dd if="+partFid+" of=/cache/"+imgFn+".img ibs=4096")
-  resp, rc = execute("adb pull /cache/"+imgFn+".img .")
-  resp, rc = executeLog("adb shell rm /cache/"+imgFn+".img")
+  resp, rc = executeLog("adb shell dd if="+partFid+" of=/cache/"+imgFn+" ibs=4096")
+  resp, rc = execute("adb pull /cache/"+imgFn+" .")
+  resp, rc = executeLog("adb shell rm /cache/"+imgFn)
 
-  if os.path.isfile(imgFn+".img")==False:
-    logp("!!Can't find "+imgFn+".img after pulling it")
+  if os.path.isfile(imgFn)==False:
+    logp("!!Can't find "+imgFn+" after pulling it")
     return False
-  biSize = os.path.getsize(imgFn+".img")
-  if biSize!=8192*1024 and partName[:4]!='boot':
-    print("--"+imgFn+".img file size is "+str(biSize)+", should be 8388608")
+  biSize = os.path.getsize(imgFn)
+  if biSize!=8192*1024 and partName[:4]=='boot':
+    print("--"+imgFn+" file size is "+str(biSize)+", should be 8388608")
     return False
     
-  print("    -- unpack "+imgFn+".img and unpack the ramdisk")
-  resp, rc = executeLog("python "+installFilesDir+"/packBoot.py unpack "+imgFn+".img")
+  print("  --unpack "+imgFn+" and unpack the ramdisk")
+  resp, rc = executeLog("python "+installFilesDir+"/packBoot.py unpack "+imgFn)
 
-  try:
-    os.remove(imgFn+".imgOrig")
-  except:  pass
-  os.rename(imgFn+".img", imgFn+".imgOrig")
+  if makeOrig: # If img fn was NOT explicitly specified, rename to ...Orig
+    try:
+      os.remove(imgFn+"Orig")
+    except:  pass
+    os.rename(imgFn, imgFn+"Orig")
 
   if partName[:4]=='boot':
     state.backupBoot = True
     state.fixBootPart = False  # Newly backuped up boot.img needs to be packed
       # and written out / flashed
-    return True
-  else: 
-    return False
+  return True
 
 
 def fixPartFunc():
@@ -363,18 +372,17 @@ def fixPartFunc():
     return False
 
   partName = arg.part  # Get name of partition to backup, defaults to 'boot'
-  partFid = "/dev/block/platform/sdhci.1/by-name/"+partName
-  imgFn = 'rmc'+partName[:1].upper()+partName[1:]
+  imgId = 'rmc'+partName[:1].upper()+partName[1:]
 
-  if partName=='boot' and 'fixBootPart' in state  and state.fixBootPart \
-    and target!=fixPartFunc:
+  if partName=='boot' and 'fixBootPart' in state and state.fixBootPart \
+    and target!="fixPart":
     print("  --skipping fixPart for boot partition, already done")
     return True  # For normal revive, if boot is fixed, skip it
     # If this is an explicit request to fixPart, do it
 
-  logp("\n--fixPartFunc "+imgFn+".img to "+partFid)
+  logp("\n--fixPartFunc "+imgId+".img to make it rooted.")
   try:
-    os.remove(imgFn+'.img')
+    os.remove(imgId+'.img')
   except:  pass
 
   if partName[:4]=='boot':
@@ -382,7 +390,7 @@ def fixPartFunc():
     # and: persist.meraki.usb_debug=0 to ...=1
     logp("  -- edit default.prop to change ro.secure to = 0")
     try:
-      fn = imgFn+"Ramdisk/default.prop"
+      fn = imgId+"Ramdisk/default.prop"
       prop = readFile(fn)
       log("  default.prop:\n"+prefix('   |', prop))
 
@@ -407,39 +415,68 @@ def fixPartFunc():
         if len(ln)>0:
           print("      .."+ln)
           pp.append(ln)
-      writeFile(imgFn+"Ramdisk/default.prop", '\n'.join(pp))
+      writeFile(imgId+"Ramdisk/default.prop", '\n'.join(pp))
       # /default.prop will be ignored by system/core/init/init.c if writable by
       # group/other
-      resp, rc = executeLog("chmod go-w "+imgFn+"Ramdisk/default.prop")
+      resp, rc = executeLog("chmod go-w "+imgId+"Ramdisk/default.prop")
       log("    fixed "+partName+" default.prop:\n"+'\n'.join(pp))
     except IOError as err:
       logp("  !! Can't find: "+fn+" in "+os.getcwd())
+      return False
 
-  logp("  -- repack ramdisk, repack "+imgFn+".img")
-  resp, rc = executeLog("python "+installFilesDir+"/packBoot.py pack "+imgFn+".img")
+  logp("  -- repack ramdisk, repack "+imgId+".img")
+  resp, rc = executeLog("python "+installFilesDir+"/packBoot.py pack "+imgId+".img")
   logp(prefix("__|", '\n'.join(listDir(os.getcwd(), False, 'rmcBoot.img'))))
-  if os.path.isfile(imgFn+".img"):  # Make sure no .img file, we will rename
+  if os.path.isfile(imgId+".img"):  # Make sure no .img file, we will rename
     hndExcept()
   
 
   # Rename the new file, rmcBoot.img20xxxxxxxxxx (20... is the date/time stamp)
   for fid in os.listdir('.'):
-    if fid[:len(imgFn)+6] == imgFn+'.img20':
-      os.rename(fid, imgFn+'.img')
+    if fid[:len(imgId)+6] == imgId+'.img20':
+      os.rename(fid, imgId+'.img')
       break
   logp(prefix("..|", '\n'.join(listDir(os.getcwd(), False, 'rmcBoot.img'))))
 
-  logp("  -- write new "+imgFn+".img to "+partName+" parition")
-  resp, rc = execute("adb push "+imgFn+".img /cache/"+imgFn+".img")
-  resp, rc = executeLog("adb shell dd if=/cache/"+imgFn+".img of="+partFid
+  if os.path.isfile(imgId+".img"):  # Did packBoot succeed in creating .img file?
+    return True
+  else:
+    state.error.append("fixPart: Can't find file '"+imgId+".img' after packBoot returned.")
+    return False
+
+
+def flashPartFunc():
+  '''Write a parition image to the device then copy it to the specified partition
+  By default this 'flashs' 'rmcBoot.img' to the 'boot' partition, but by
+  specifiying 'part=???' and/or 'img=???' options, any image can be written
+  to any partition.
+  ''' 
+  if target!="flashPart":  # If flashPart is not the explicit objective...
+    if fixPartFunc()==False:
+      return False
+
+  partName = arg.part  # Get name of partition to backup, defaults to 'boot'
+  partFid = "/dev/block/platform/sdhci.1/by-name/"+partName
+  if 'img' in arg:
+    imgFn = arg.img
+  else:
+    imgFn = 'rmc'+partName[:1].upper()+partName[1:]+".img"
+
+  logp("\n--flashPartFunc, writing "+imgFn+" to "+partFid)
+  resp, rc = executeLog("adb push "+imgFn+" /cache/"+imgFn)
+  if rc!=0:
+    state.error.append("Writing "+imgFn+" on device failed")
+    return False
+  resp, rc = executeLog("adb shell dd if=/cache/"+imgFn+" of="+partFid
     +" ibs=4096")
-  resp, rc = executeLog("adb shell rm /cache/"+imgFn+".img")
+  if rc!=0:
+    state.error.append("Copying "+imgFn+" on device, to "+partName+" failed")
+    return False
+  resp, rc = executeLog("adb shell rm /cache/"+imgFn)
 
   if partName[:4]=='boot':
     state.fixBootPart = True
-    return True
-  else:
-    return false
+  return True
   
 
 def installAppsFunc():
@@ -644,7 +681,8 @@ objectives = [
   ['adbMode', "Gets device into 'adb' mode, or 'fastboot' or 'normal' operation."],
   ['replaceRecovery', "Replace the recovery partition with a full featured recovery program"], 
   ['backupPart', "Backs up boot (or other specified partition)."],
-  ['fixPart', "Rewrites the boot partition image with a 'fixed'(unlocked) ramdisk"],
+  ['fixPart', "Changes default.prop file on the ramdisk to allow rooting."],
+  ['flashPart', "Rewrites the (boot) partition image "],
   ['installApps', "Install VOIP phone app, uninstall old Meraki phone apps"],
   ['revive', "<--Install reviveMC74 apps --this is the principal objective--"],
   ['resetBFF', "(manual step) Reset the 'Boot partion Fixed Flag'"],
