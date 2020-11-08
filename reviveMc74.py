@@ -154,12 +154,9 @@ def reviveMain(args):
         
       if "gzipNeeded" in state.needed:
         print("\nGZIP/GUNZIP programs needed.  To for windows, see:\n"
-          +"  http://gnuwin32.sourceforge.net/packages/gzip.htm\n"
-          +"  http://gnuwin32.sourceforge.net/downlinks/gzip-bin-zip.php\n\n"
-          +"Afer you download the gzip-1.3.12-1-bin.zip file, open it and copy" 
-          +" gzip.exe into your 'path'.\n"
-          +"Also, copy 'gunzip.bat' from the 'installFiles' directory into a"
-          +" directory that is in your 'path'" 
+          +"  https://sourceforge.net/projects/unxutils/files/unxutils/current/UnxUtils.zip/download"
+          +"To get 'UnxUtil.zip.  From that file extract: 'usr/local/wbin/gunzip.exe' "
+          +"and 'usr/local/wbin/gzip.exe' to a directory that is in your PATH." 
         )
         
       return
@@ -531,20 +528,20 @@ def checkFilesFunc():
 
 def adbModeFunc(targetMode="adb"):
   '''Instruct user how to get MC74 in adb mode.
-
+  
   Note: The factory recovery mode does not have the 'sh' command available, therefore
   adb functionality is limited.
   '''
   isAdb = False
   isFastboot = False
   isNormal = False  # Normal is: booted into normal dev operation, not recovery mode
-
+  
   resp, rc = executeLog("adb devices")
-
+  
   # Figure out what mode we are currently in
   currentMode = "unknown"
   if findLine(resp, "\trecovery"):
-    currentMode = "adb"
+    currentMode = "recovery"
     isAdb = True
   if findLine(resp, "\tdevice"):
     currentMode = "normal"
@@ -560,27 +557,28 @@ def adbModeFunc(targetMode="adb"):
         state.adbMode = "fastboot"
         return True
       isFastboot = True
-
+  
   print("\n  --adbModeFunc, currentMode: "+currentMode+", targetMode: "+targetMode)
-
+  
   if currentMode == targetMode:
     pass  # Nothing to change
-
+  
   elif isAdb and targetMode=="fastboot":
     print("    --Changing from adb mode to fastboot mode")
     resp, rc = executeLog("adb reboot bootloader")
-
+  
   elif isAdb and targetMode=="adb":
     currentMode = targetMode  # normal mode should be eqivalent to adb after fixing
-    
-  elif isAdb==False and targetMode=="adb":
+  
+  elif targetMode=="adb" or targetMode=="recovery":
+    # Reboot the MC74 into Recovery mode
     print('''
     Prepare to reboot the MC74.
       -- Remove the USB cable from the side of the MC74 (if connected)
       -- Remove the Ethernet/POE cable from the back of the MC74
       -- Reconnect the USB cable to the right side(not back) connector of the MC74
         (and the other end to the development computer)
-
+    
     Then, be ready to do this after you press enter:
       -- Apply power with POE ethernet cable to WAN port (the ethernet port closest to the round
         socket on the back of the MC74.)
@@ -588,29 +586,29 @@ def adbModeFunc(targetMode="adb"):
       -- keep mute button down until cisco/meraki logo appears and vibrator grunts.
       -- release mute
       -- (in about 15 sec, Windows should make the  'usb device attached' sound.)
-
+    
     Press enter when ready to power up the MC74.
     ''')
     try:
       resp = input()
     except:
       pass
-
+    
   elif isNormal==False and targetMode=="normal":
     print("    --Changing from adb mode to normal device mode")
     resp, rc = executeLog("adb reboot")
-
+    
   else:
     print("adbMode request to go from '"+currentMode+"' mode to '"+targetMode+"'.")
     print("  Don't know how to change to that mode.")
-    return false
+    return False
     
   if currentMode!=targetMode:
     cmd = "fastboot" if targetMode=="fastboot" else "adb"
     print("    --loop running '"+cmd+" devices' until we see a device")
     searchStr = "\trecovery" if targetMode=='adb' else "\tfastboot"
-    if targetMode == "normal":   searchStr = "device"
-
+    if targetMode == "normal":   searchStr = "\tdevice"
+    
     for ii in range(0, 12):
       resp, rc = executeLog(cmd+" devices")
       ln = findLine(resp, searchStr)
@@ -619,12 +617,12 @@ def adbModeFunc(targetMode="adb"):
         print("      found device with serial number: "+state.serialNo)
         state.adbMode = targetMode
         return True
-
+        
       print("    --Waiting for reboot "+str(12-ii)+"/12: "+resp.replace('\n', ' '))
       time.sleep(5)
     state.adbMode = "unknown"
     return False
-
+    
   state.adbMode = targetMode
   return True
 
@@ -657,6 +655,96 @@ def manualFunc():
   except: hndExcept()
 
 
+def versionFunc():
+  logp("\n--versionFunc --Gathers information about the software version on the MC74")
+  if state.adbMode != 'adb':
+    if adbModeFunc("adb")==False: 
+      print("Sorry, the MC74 needs to have ADB working in recovery or normal "
+        +"device mode to work.")
+      return False
+
+  if state.adbMode == "recovery":
+    # Mount /system, and /data  if in recovery mode
+    resp, rc = executeLog("mount /dev/block/platform/sdhci.1/by-name/system /system")
+    resp, rc = executeLog("mount /dev/block/platform/sdhci.1/by-name/userdata /data")
+  
+  iList = []
+
+  # Get the device serial number from u-boot-env partition
+  resp, rc = executeLog("adb shell dd if=/dev/block/platform/sdhci.1/by-name/u-boot-env " \
+    "of=/cache/uBootEnv bs=640 count=1")
+  if rc==0:
+    resp, rc = executeLog("adb pull /cache/uBootEnv uBootEnv")
+    resp, rc = executeLog("adb shell rm /cache/uBootEnv")
+    ube = readFile("uBootEnv")
+    if len(ube)>5:  # Remove mysterious leading 5 bytes
+      ube = ube[5:]
+    ube = ube.split('\0')
+    log("u-boot-env:\n"+rformat(ube))
+    for ln in ube:
+      if len(ln)>3 and ln[:3]=='sn=':
+        iList.append("devSN:\t"+ln[3:])
+
+  # Get ro.build.version.release, ro.build.id, ro.build.date
+  propNames = ["ro.build.id", "ro.build.version.release", "ro.build.date"]
+  resp, rc = execute("adb shell cat /system/build.prop")
+  prop = bunch()
+  if rc == 0:
+    lines = linesToList(resp)
+    for ln in lines:
+      nameVal = ln.split('=')  
+      if len(nameVal)>1:  # If line doesn't contain an '=', it may be a comment
+        prop[nameVal[0].strip()] = nameVal[1].strip()
+  
+  for pn in propNames:
+    if pn in prop:
+      iList.append(pn+":\t"+prop[pn])
+    
+  # Read /proc/version (in normal mode)
+  resp, rc = executeLog("cat /proc/version")
+  if rc==0:
+    iList.append("/procVersion:\t"+resp)
+  else:
+    iList.append("/procVersion:\t(unknown, in recovery mode)")
+
+  # Get date and size of various interesting files
+  getDateTime(iList, "/init")
+  getDateTime(iList, "/system/build.prop")
+  getDateTime(iList, "/system/framework/am.jar")
+  getDateTime(iList, "/cache/downloads/update.tar.gz")
+  getDateTime(iList, "/cache/downloads/images/boot.img")
+  getDateTime(iList, "/cache/downloads/images/system.img")
+
+  infoStr = ""
+  for ln in iList:
+    infoStr += "  "+ln+"\n"
+  print("\nVersion Info:\n"+infoStr)
+  writeFile("version.info", infoStr)
+  return True
+
+
+def getDateTime(iList, fn):
+  resp, rc = executeLog("adb shell ls -l "+fn)
+  if rc==0:
+    lines = linesToList(resp)
+    for ln in lines:
+      if len(ln)>2 and ln[0:2]=='__':  # Ignore '__bionic_open_tzdata...' error lines
+        continue
+      iList.append(fn+":\t"+ln)
+    
+
+def linesToList(resp):
+  lines = []
+  for ln in resp.split('\n'):
+    while len(ln)>0 and ln[-1]=='\r':  # Lines through adb/shell have 2 \r's before the \n
+      ln = ln[:-1]
+    ln = ln.strip()
+    if len(ln)==0 or ln[0]=='#':
+      continue  # Skip comments
+    lines.append(ln)
+  return lines
+
+
 def listObjectivesFunc():
   print("\nList of objectives (phases or operations needed for revival) Case sensitive:")
   for ob in objectives:
@@ -685,6 +773,8 @@ objectives = [
   ['flashPart', "Rewrites the (boot) partition image "],
   ['installApps', "Install VOIP phone app, uninstall old Meraki phone apps"],
   ['revive', "<--Install reviveMC74 apps --this is the principal objective--"],
+  ['version', "Find and record some software version info"],
+  ['manual', "Place to manually invoke reviveMC74 functions (advanced users)"],
   ['resetBFF', "(manual step) Reset the 'Boot partion Fixed Flag'"],
 ] # end of objectives
 
