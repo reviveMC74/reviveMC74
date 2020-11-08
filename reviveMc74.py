@@ -700,13 +700,6 @@ def versionFunc():
     if pn in prop:
       iList.append(pn+":\t"+prop[pn])
     
-  # Read /proc/version (in normal mode)
-  resp, rc = executeLog("cat /proc/version")
-  if rc==0:
-    iList.append("/procVersion:\t"+resp)
-  else:
-    iList.append("/procVersion:\t(unknown, in recovery mode)")
-
   # Get date and size of various interesting files
   getDateTime(iList, "/init")
   getDateTime(iList, "/system/build.prop")
@@ -714,6 +707,13 @@ def versionFunc():
   getDateTime(iList, "/cache/downloads/update.tar.gz")
   getDateTime(iList, "/cache/downloads/images/boot.img")
   getDateTime(iList, "/cache/downloads/images/system.img")
+
+  # Read /proc/version (in normal mode)
+  resp, rc = executeLog("adb shell cat /proc/version")
+  if rc==0:
+    iList.append("/procVersion:\t"+resp)
+  else:
+    iList.append("/procVersion:\t(unknown, in recovery mode)")
 
   infoStr = ""
   for ln in iList:
