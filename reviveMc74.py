@@ -28,8 +28,8 @@ neededProgs = bunch(  # These are commands that demonstrate that needed programs
   fastboot = ["fastboot", "adbNeeded"],
   unpackbootimg = ["unpackbootimg", "unpNeeded"],
   mkbootimg = ["mkbootimg", "unpNeeded"],
-  chmod = ["chmod", "upnNeeded"], 
-  cpio = ["cpio", "upnNeeded"], 
+  chmod = ["chmod", "unpNeeded"], 
+  cpio = ["cpio", "unpNeeded"], 
   gzip = ["gzip -V", "gzipNeeded"], 
   gunzip = ["gunzip -V", "gzipNeeded"], 
 )
