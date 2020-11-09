@@ -674,16 +674,26 @@ def versionFunc():
   resp, rc = executeLog("adb shell dd if=/dev/block/platform/sdhci.1/by-name/u-boot-env " \
     "of=/cache/uBootEnv bs=640 count=1")
   if rc==0:
-    resp, rc = executeLog("adb pull /cache/uBootEnv uBootEnv")
+    resp, rc = executeLog("adb pull /cache/uBootEnv uBootEnv.tmp")
     resp, rc = executeLog("adb shell rm /cache/uBootEnv")
-    ube = readFile("uBootEnv")
+    ube = readFile("uBootEnv.tmp")
     if len(ube)>5:  # Remove mysterious leading 5 bytes
       ube = ube[5:]
+
+    for ii in reversed(range(0, len(ube))):  # Remove trail nulls from u-boot-env file
+      if ube[ii]!='\0':
+        ube = ube[:ii+1]
+        break
+
     ube = ube.split('\0')
     log("u-boot-env:\n"+rformat(ube))
     for ln in ube:
       if len(ln)>3 and ln[:3]=='sn=':
         iList.append("devSN:\t"+ln[3:])
+    try:
+      os.remove("uBootEnv.tmp")
+    except:  pass
+
 
   # Get ro.build.version.release, ro.build.id, ro.build.date
   propNames = ["ro.build.id", "ro.build.version.release", "ro.build.date"]
