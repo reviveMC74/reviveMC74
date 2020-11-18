@@ -397,7 +397,7 @@ def fixPartFunc():
     try:
       fn = imgId+"Ramdisk/default.prop"
       prop = readFile(fn)
-      log("  default.prop:\n"+prefix('   |', prop))
+      log("  default.prop:\n"+prefix('__', prop))
 
       try:
         ii = prop.index('secure=')+7
@@ -407,7 +407,7 @@ def fixPartFunc():
         ii = prop.index('usb_debug=')+10
         prop = prop[:ii]+'1'+prop[ii+1:] # Change '0' to '1'
       except:  print("  --failed to find/replace 'secure=1'")
-      log("itermediate default.prop:\n"+prop)
+      #log("itermediate default.prop:\n"++prefix('--', prop))
 
       # other fixes (not implemented yet)
       print("  (UIF create sym link from /ssm to /sdcard/ssm)");
@@ -418,13 +418,13 @@ def fixPartFunc():
       for ln in prop.split('\n'):
         if ln[-1:]=='\r':  ln = ln[:-1]
         if len(ln)>0:
-          print("      .."+ln)
+          #print("      .."+ln)
           pp.append(ln)
       writeFile(imgId+"Ramdisk/default.prop", '\n'.join(pp))
       # /default.prop will be ignored by system/core/init/init.c if writable by
       # group/other
       resp, rc = executeLog("chmod go-w "+imgId+"Ramdisk/default.prop")
-      log("    fixed "+partName+" default.prop:\n"+'\n'.join(pp))
+      log("    fixed "+partName+" default.prop:\n"+prefix('__', '\n'.join(pp)))
     except IOError as err:
       logp("  !! Can't find: "+fn+" in "+os.getcwd())
       return False
