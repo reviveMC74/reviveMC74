@@ -143,12 +143,12 @@ def reviveMain(args):
         )
         
       if "unpNeeded" in state.needed:
-        print("\nUNPACKBOOTIMG/MKBOOTIMG programs needed.  To download, see:\n"
+        print("\nUNPACKBOOTIMG/MKBOOTIMG/CPIO/CHMOD programs needed.  To download, see:\n"
           +"  https://forum.xda-developers.com/showthread.php?t=2073775\n"
           +"  or: https://github.com/huaixzk/android_win_tool   for precompiled"
           +" windows version\n"
           +"  or: https://github.com/osm0sis/mkbootimg   for the source code.\n"
-          +"  Make sure that 'unpackbootimg', 'mkbootimg' 'chmod' and 'cpio' are in"
+          +"  Make sure that 'unpackbootimg', 'mkbootimg', 'chmod' and 'cpio' are in"
           +" the 'path'."
         )
         
@@ -319,6 +319,11 @@ def replaceRecoveryFunc():
 
 
 def backupPartFunc():
+  '''Backup a disk partition from the MC74, defaults to the 'boot' partition.  If it is the boot or boot2
+  partition, it is then unpacked into the rmcBoot[2]Unpack and the ramdisk from that boot image is 
+  unpacked into the rmcBoot[2]Ramdisk directory.
+  '''
+
   if replaceRecoveryFunc()==False:
     return False
   if "backupBoot" in state and state.backupBoot and target!="backupPart":
@@ -365,6 +370,9 @@ def backupPartFunc():
 
 
 def fixPartFunc():
+  ''' Edit default.prop file (and perhaps other) from rmcBootRamdisk directory, then pack the 
+      ramdisk back into a rmcBoot.img file
+  '''
   if backupPartFunc()==False:
     return False
 
