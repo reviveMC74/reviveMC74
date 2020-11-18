@@ -607,8 +607,13 @@ def adbModeFunc(targetMode="adb"):
       pass
     
   elif isNormal==False and targetMode=="normal":
-    print("    --Changing from adb mode to normal device mode")
-    resp, rc = executeLog("adb reboot")
+    print("    --Changing from recovery mode to normal device mode")
+    #resp, rc = executeLog("adb reboot")  --This seems to hang in clockwork recovery mode
+    # Per https://opensource.com/article/19/7/reboot-linux  reboot can be forced with:
+    #   echo b > /proc/sysrq-trigger
+    # (if /proc/sys/kernel/sysrq is set to '1', which seems to be the case in clockwork recovery)
+    resp, rc = execute(['adb', 'shell', "echo b >/proc/sysrq-trigger"])
+    log("reboot by sysrq, rc="+str(rc)+": "+resp)
     
   else:
     print("adbMode request to go from '"+currentMode+"' mode to '"+targetMode+"'.")
