@@ -148,8 +148,8 @@ def reviveMain(args):
           +"  or: https://github.com/huaixzk/android_win_tool   for precompiled"
           +" windows version\n"
           +"  or: https://github.com/osm0sis/mkbootimg   for the source code.\n"
-          +"  If you have unpackbootimg and mkbootimg, make sure they are in"
-          +" the 'path'"
+          +"  Make sure that 'unpackbootimg', 'mkbootimg' 'chmod' and 'cpio' are in"
+          +" the 'path'."
         )
         
       if "gzipNeeded" in state.needed:
@@ -486,8 +486,12 @@ def installAppsFunc():
   resp, rc = executeLog("adb shell rm /system/app/DroidNode.apk")
   resp, rc = executeLog("adb shell rm /systemls/app/DroidNodeSystemSvcs.apk")
   resp, rc = executeLog("adb uninstall ribo.audtest")
+  resp, rc = executeLog("adb uninstall revive.MC74.debug")  # Old name with .debug
   resp, rc = executeLog("adb uninstall package:com.meraki.dialer2")
   # Perhaps run: ps |grep meraki and kill process?  perhaps reboot 
+  # Perhaps backup copies of the apps before erasing them
+  # Perhaps check datestamp of installed /data/app/ribo.ssm... file to see if
+  #   reinstall is needed?
 
   # Install programs
   for id in installFiles:
