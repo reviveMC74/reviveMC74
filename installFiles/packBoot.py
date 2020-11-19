@@ -37,7 +37,7 @@ def unpack(biFn):
     except:
       pass  # Directory may exist
     return False
-  print("ls "+os.getcwd()+":\n"+prefix("--|", '\n'.join(listDir(os.getcwd(),
+  print("ls-unpack "+os.getcwd()+":\n"+prefix("--|", '\n'.join(listDir(os.getcwd(),
     False))))
 
   resp, rc = execute("gunzip "+biFn+"-ramdisk.gz")
@@ -75,7 +75,7 @@ def pack(biFn):
 
   # In bootRamdisk dir, recreate the cpio archive
   os.chdir(rdDir)
-  print("    cwd rd "+os.getcwd())
+  print("  cwd rd "+os.getcwd())
 
   fl = listDir('.')
   fl.sort()   # Sort filenames alphabetically
@@ -91,8 +91,11 @@ def pack(biFn):
     returnStr=False)
   print("cpio -o  rc="+str(rc)+", "+str(os.path.getsize(outFid))+" bytes")
 
+
   # In the bootUnpack directory, write the ramdisk file and gzip it
   os.chdir("../"+unDir)
+  print("ls "+os.getcwd()+":\n"+prefix("--|", '\n'.join(listDir(os.getcwd(),
+    False))))
   #try:
   #  os.remove(biFn+"-ramdisk")
   #except: pass
