@@ -45,9 +45,9 @@ installFiles = bunch(
 )
 
 installApps = bunch(
-  launcher = "com.teslacoilsw.launcher-4.1.0-41000-minAPI16.apk",
-  ssm = "revive.SSMService-debug.apk",
-  reviveMC74 = "revive.MC74-debug.apk"
+  launcher = ["com.teslacoilsw.launcher-4.1.0-41000-minAPI16.apk", "com.teslacoilsw.launcher"],
+  ssm = ["revive.SSMService-debug.apk", "ribo.ssm"],
+  reviveMC74 = ["revive.MC74-debug.apk", "revive.MC74"]
 )
 
 updateFiles = '''
@@ -496,7 +496,6 @@ def installAppsFunc():
   resp, rc = executeLog("adb shell rm /system/app/DroidNode.apk")
   resp, rc = executeLog("adb shell rm /systemls/app/DroidNodeSystemSvcs.apk")
   resp, rc = executeLog("adb uninstall ribo.audtest")
-  resp, rc = executeLog("adb uninstall revive.MC74.debug")  # Old name with .debug
   resp, rc = executeLog("adb uninstall package:com.meraki.dialer2")
   # Perhaps run: ps |grep meraki and kill process?  perhaps reboot 
   # Perhaps backup copies of the apps before erasing them
@@ -514,8 +513,29 @@ def installAppsFunc():
 
   # Install/update new apps
   for id in installApps:
-    print("  --installing app: "+id)
-    resp, rc = executeLog("adb install -t -r "+installFilesDir+"/"+installApps[id])
+    fid = installApps[id][0]
+    appTag = installApps[id][1]
+    dt = os.path.getmtime(installFilesDir+"/"+fid)
+    ts = datetime.datetime.fromtimestamp(dt).strftime('%Y-%m-%d %H:%M:%S')
+    newDt, newTm = ts.split(' ')
+
+    # If app is already installed see if we have a newer version
+    resp, rc = execute("adb shell ls -l /data/app/"+appTag+"*")
+    doInstall = True
+    if rc==0:
+      for ln in resp.split('\n'):
+        if ln.find(appTag)>0:  # If this line of ls -l is the one for this apk...
+          instSz, instDt, instTm, instFn = ln.split(' ')[-4:]
+          logp("    installed copy of "+id+": "+instDt+" "+instTm+"  size: "+instSz) 
+          # Is the installed apk, instDt the same or new?
+          if newDt<=instDt:
+            logp("    (Installed version of "+id+" is good, skipping install. (newDt "+newDt+"))")
+            doInstall = False
+          break  # Found the matching line in 'ls =l' output.
+
+    if doInstall:
+      logp("  --installing app: "+id+"  ("+ts+")")
+      resp, rc = executeLog("adb install -t -r "+installFilesDir+"/"+fid)
   
   state.installApps = True
   return True
