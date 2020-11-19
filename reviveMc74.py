@@ -452,20 +452,22 @@ def fixPartFunc():
 
 def flashPartFunc():
   '''Write a parition image to the device then copy it to the specified partition
-  By default this 'flashs' 'rmcBoot.img' to the 'boot' partition, but by
+  By default this 'flashes' 'rmcBoot.img' to the 'boot' partition, but by
   specifiying 'part=???' and/or 'img=???' options, any image can be written
   to any partition.
   ''' 
-  if target!="flashPart":  # If flashPart is not the explicit objective...
-    if fixPartFunc()==False:
-      return False
-
   partName = arg.part  # Get name of partition to backup, defaults to 'boot'
   partFid = "/dev/block/platform/sdhci.1/by-name/"+partName
   if 'img' in arg:
     imgFn = arg.img
   else:
     imgFn = 'rmc'+partName[:1].upper()+partName[1:]+".img"
+
+  # If the partition image file doesn't exist, run the fixPartFunc
+  if os.path.isfile(imgFn)==False and arg.part[:4]=='boot':
+    if fixPartFunc()==False:
+      return False
+
 
   logp("\n--flashPartFunc, writing "+imgFn+" to "+partFid)
   resp, rc = executeLog("adb push "+imgFn+" /cache/"+imgFn)
