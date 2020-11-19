@@ -94,7 +94,7 @@ def pack(biFn):
 
   # In the bootUnpack directory, write the ramdisk file and gzip it
   os.chdir("../"+unDir)
-  print("ls "+os.getcwd()+":\n"+prefix("--|", '\n'.join(listDir(os.getcwd(),
+  print("ls-pack "+os.getcwd()+":\n"+prefix("--|", '\n'.join(listDir(os.getcwd(),
     False))))
   #try:
   #  os.remove(biFn+"-ramdisk")
