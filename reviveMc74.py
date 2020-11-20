@@ -554,7 +554,7 @@ def checkFilesFunc():
     succeeded &= chkFile(installFiles[id][0]) # (Programs/Files to be installed)
 
   for id in installApps:
-    succeeded &= chkFile(installApps[id]) # (Apps are also in installFiles dir)
+    succeeded &= chkFile(installApps[id][0]) # (Apps are also in installFiles dir)
 
   state.checkFiles = succeeded
   return succeeded
