@@ -112,12 +112,12 @@ def pack(biFn):
 
 
   # Build file system image file
-  cmdline = readFile(biFn+"-cmdline")[:-1]
-  base = readFile(biFn+"-base")[:-1]
-  pagesize = readFile(biFn+"-pagesize")[:-1]
+  cmdline = removeCRLF(readFile(biFn+"-cmdline"))
+  base = removeCRLF(readFile(biFn+"-base"))
+  pagesize = removeCRLF(readFile(biFn+"-pagesize"))
   ts = datetime.now().strftime("%y%m%d%H%M")
   cmd = ["mkbootimg", "--kernel", biFn+"-zImage",
-    "--ramdisk", biFn+"-ramdisk.gz", "--cmdline", cmdline,
+    "--ramdisk", biFn+"-ramdisk.gz", "--cmdline", '"'+cmdline+'"',
     "--base", "0x"+base, "--pagesize", pagesize, "--output", "../"+biFn+ts ]
   # Note: --cmdline contains spaces, we must pass the command as tokens so
   # execute() won't .split(' ') the command to prepare the args array
@@ -139,6 +139,12 @@ def listDir(dir, recursive=True, search=''):
     if recursive and os.path.isdir(subdir):
       lst.extend(listDir(subdir))
   return lst
+
+
+def removeCRLF(ln):  # Remove all trailing LFs and CRs
+  while len(ln)>0 and ln[-1]=='\r' or ln[-1]=='\n':
+    ln = ln[:-1]
+  return ln
 
 
 if __name__ == '__main__':
