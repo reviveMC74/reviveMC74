@@ -77,7 +77,11 @@ made into a virtual 'button' to do something.)
 
 ### Configuring the VOIP SIP address
 
-(TBD)
+When the phone app starts up, if no VOIP account address is saved, the 'VOIP Settings'
+page will be displayed to allow you to enter the SIP address for the phone.  The SIP
+can be changed later by swiping 'in' from the the left of the screen (while in the phone 
+app), to pull out the 'side menu'.  Click on the 'SIP Address' menu item.  For more complicated
+SIP addresses use the 'Settings' side menu item.
 
 ### Revival Process
 
