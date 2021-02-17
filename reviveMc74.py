@@ -436,9 +436,9 @@ def fixPartFunc():
     hndExcept()
   
 
-  # Rename the new file, rmcBoot.img20xxxxxxxxxx (20... is the date/time stamp)
+  # Rename the new file, rmcBoot.img2xxxxxxxxxxx (2... is the first digit in decade timestamp)
   for fid in os.listdir('.'):
-    if fid[:len(imgId)+6] == imgId+'.img20':
+    if fid[:len(imgId)+5] == imgId+'.img2':
       os.rename(fid, imgId+'.img')
       break
   logp(prefix("..|", '\n'.join(listDir(os.getcwd(), False, 'rmcBoot.img'))))
