@@ -214,9 +214,9 @@ def findLine(data, searchStr):
 
 def executeLog(cmd, showErr=True):
   '''Execute an operating system command and log the command and response'''
-  print("  Executing: '"+cmd+"'")
+  print("  Executing: '"+str(cmd)+"'")
   ret = execute(cmd, showErr)
-  logp("  '"+cmd+"'  (rc="+str(ret[1])+")\n"+prefix('    |', ret[0]))
+  logp("  '"+str(cmd)+"'  (rc="+str(ret[1])+")\n"+prefix('    |', ret[0]))
   return ret
 
 
@@ -572,10 +572,10 @@ def adbModeFunc(targetMode="adb"):
   isFastboot = False
   isNormal = False  # Normal is: booted into normal dev operation, not recovery mode
   
-  resp, rc = executeLog("adb devices")
-  
+ 
   # Figure out what mode we are currently in
   currentMode = "unknown"
+  resp, rc = executeLog("adb devices")
   if findLine(resp, "\trecovery"):
     currentMode = "recovery"
     isAdb = True
@@ -594,7 +594,8 @@ def adbModeFunc(targetMode="adb"):
         return True
       isFastboot = True
   
-  logp("\n  --adbModeFunc, currentMode: "+currentMode+", targetMode: "+targetMode)
+  logp("\n  --adbModeFunc, currentMode: "+currentMode+", targetMode: "+targetMode
+    +(" adb" if isAdb else "")+(" normal" if isNormal else "")+(" fastboot" if isFastboot else ""))
   
   if currentMode == targetMode:
     pass  # Nothing to change
@@ -631,13 +632,17 @@ def adbModeFunc(targetMode="adb"):
       pass
     
   elif isNormal==False and targetMode=="normal":
-    print("    --Changing from recovery mode to normal device mode")
-    #resp, rc = executeLog("adb reboot")  --This seems to hang in clockwork recovery mode
-    # Per https://opensource.com/article/19/7/reboot-linux  reboot can be forced with:
-    #   echo b > /proc/sysrq-trigger
-    # (if /proc/sys/kernel/sysrq is set to '1', which seems to be the case in clockwork recovery)
-    resp, rc = execute(['adb', 'shell', "echo b >/proc/sysrq-trigger"])
-    log("reboot by sysrq, rc="+str(rc)+": "+resp)
+    print("    --Changing from "+currentMode+" mode to normal device mode")
+    if isFastboot:
+      resp, rc = executeLog("fastboot reboot")
+      
+    else:
+      #resp, rc = executeLog("adb reboot")  --This seems to hang in clockwork recovery mode
+      # Per https://opensource.com/article/19/7/reboot-linux  reboot can be forced with:
+      #   echo b > /proc/sysrq-trigger
+      # (if /proc/sys/kernel/sysrq is set to '1', which seems to be the case in clockwork recovery)
+      resp, rc = executeLog(['adb', 'shell', "echo b >/proc/sysrq-trigger"])
+      log("reboot by sysrq, rc="+str(rc)+": "+resp)
     
   else:
     print("adbMode request to go from '"+currentMode+"' mode to '"+targetMode+"'.")
