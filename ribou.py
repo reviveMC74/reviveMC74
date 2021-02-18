@@ -338,7 +338,10 @@ def execu(cmd, stdin=None, showErr=True, returnStr=True):
   if showErr and len(err)>0:
     print("executeErr: %s" % (err))
   if returnStr:
-    out = out.encode()
+    try:
+      out = out.encode()
+    except: 
+      out = out.decode("utf-8")  # Needed for python3   bytes->str
   return out, proc.returncode
 
 
@@ -352,7 +355,10 @@ def execute(cmd, showErr=True, returnStr=True):
   out, err = proc.communicate()
   if type(out)==bytes:  # Needed for python 3 (stupid python)
     out = out.decode()
-    err = err.decode()
+    try:
+      err = err.decode()
+    except Exception as ex: 
+      err = "!!--"+str(type(ex))+"--!!"
   
   if showErr and len(err)>0:
     out += err
