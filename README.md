@@ -49,7 +49,7 @@ or
 
 ### Reviving
 
-First, (in the directory containing the 'reviveMC74' git repo) execute the command:
+First, to see the steps the script will take, (in the directory containing the 'reviveMC74' git repo) execute the command:
 
     python reviveMC74.py listObjectives
 
@@ -59,33 +59,21 @@ The default objective is 'revive', which means unlock the MC74 by flashing
 a new recovery image, and patching the boot.img to run in not secure mode, uninstall
 the Meraki apps and to install revive.MC74-debug.apk
 
-If at some point you want to revive the MC74 up to the point that the boot file system
+If for some reason you only want to revive the MC74 up to the point that the boot file system
 image was backuped on your host computer, but before the 'fixed' (updated) boot 
 partition is installed, use the 'backupBoot' objective.
 
-### Using the phone
+To start the revival, start the reviveMC74.py script with no arguments (implying the top level 'revive' objective):
 
-After the phone boots up Android you should see the Android launcher (provided by the
-com.teslacoilsw.launcher app.  If you pick up the handset the VOIP app should show the
-virtual keypad and you should hear a 'dialtone' on the handset.
-
-The MC74 only has a few physical buttons (Volume Up, Volume Down and Mute).  They work
-as you would expect -- EXCEPT that if you do a 'long click' on the Mute button it will
-take you back to the Android launcher home screen.  (There is also an ambient light 
-sensor hidden in the frame 1cm above the Volume Up button -- eventually this will be
-made into a virtual 'button' to do something.)
-
-### Configuring the VOIP SIP address
-
-When the phone app starts up, if no VOIP account address is saved, the 'VOIP Settings'
-page will be displayed to allow you to enter the SIP address for the phone.  The SIP
-can be changed later by swiping 'in' from the the left of the screen (while in the phone 
-app), to pull out the 'side menu'.  Click on the 'SIP Address' menu item.  For more complicated
-SIP addresses use the 'Settings' side menu item.
+    python reviveMC74.py
+    
+The script will check that all the needed programs and files are avaialble.  It then checks the state of the MC74 to see what
+state it is in and how much of the revival process has already been done.  Follow the instructions in the script -- as there
+are some manual steps, like holding down the 'Mute' button and connecting and disconnecting cables.
 
 ### Revival Process
 
-The revival process is done in step, called 'objectives'.  Most objectives have 
+The revival process is done in steps, called 'objectives'.  Most objectives have 
 perequiste objectives.  If a perequiste objective has already been completed, it is 
 not skipped (unless it is explicity requested by the user).  This objectively run
 in the following order:
@@ -110,7 +98,7 @@ partition has had 'clockwork recovery' installed.  If it hasn't it proceeds do t
 
 In the 'backupBoot' objective of reviving the MC74, the contents of the stock /boot partition is
 uploaded to the host, and extracted.  It is then modified and reassembled.  This data is 
-left on the host computer for advanced users to look and and modify.  After modification
+left on the host computer for advanced users to look at and and modify.  After modification
 the user can repeat the reviveMC74.py 'fixBootPartition' objective to install those
 modifications to the MC74.
 
@@ -119,7 +107,6 @@ The data on the host includes:
 *rmcBootUnpack    -- boot.img unpacked
 *rmcBootRamdisk   -- ramdisk.gz from rmcBootUnpack, expanded into individual files
 
-
 ### Problems with the revival process
 
 If a problem occurs while running reviveMC74.py, look at the 'reviveMC.log' file, it may
@@ -127,8 +114,28 @@ have some useful info.
 
 Report problems on the github reviveMC74 issues page.
 
+### Using the phone
+
+After the phone boots up Android you should see the Android launcher (provided by the
+com.teslacoilsw.launcher app.  If you pick up the handset the VOIP app should show the
+virtual keypad and you should hear a 'dialtone' on the handset.
+
+The MC74 only has a few physical buttons (Volume Up, Volume Down and Mute).  They work
+as you would expect -- EXCEPT that if you do a 'long click' on the Mute button it will
+take you back to the Android launcher home screen.  (There is also an ambient light 
+sensor hidden in the frame 1cm above the Volume Up button -- eventually this will be
+made into a virtual 'button' to do something.)
+
+### Configuring the VOIP SIP address
+
+When the phone app starts up, if no VOIP account address is saved, the 'VOIP Settings'
+page will be displayed to allow you to enter the SIP address for the phone.  The SIP
+can be changed later by swiping 'in' from the the left of the screen (while in the phone 
+app), to pull out the 'side menu'.  Click on the 'SIP Address' menu item.  For more complicated
+SIP addresses use the 'Settings' side menu item.
+
 ### Phone Software
-reviveMC74 keeps the original Android (JellyBean api level 17) operating system on the MC74.  A version of the Linphone Soft VOIP application is installed.  A com.teslacoil Android Launcher is included to allow other Android apps to be launched.
+reviveMC74 keeps the original Android 4.2.3 (JellyBean api level 17) operating system on the MC74.  A version of the Linphone Soft VOIP application is installed.  A com.teslacoil Android Launcher is included to allow other Android apps to be launched.
 
 ### Further Questions
 
