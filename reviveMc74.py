@@ -594,7 +594,7 @@ def adbModeFunc(targetMode="adb"):
         return True
       isFastboot = True
   
-  print("\n  --adbModeFunc, currentMode: "+currentMode+", targetMode: "+targetMode)
+  logp("\n  --adbModeFunc, currentMode: "+currentMode+", targetMode: "+targetMode)
   
   if currentMode == targetMode:
     pass  # Nothing to change
@@ -659,7 +659,7 @@ def adbModeFunc(targetMode="adb"):
         state.adbMode = targetMode
         return True
         
-      print("    --Waiting for reboot "+str(12-ii)+"/12: "+resp.replace('\n', ' '))
+      print("  --Waiting for reboot "+str(12-ii)+"/12: "+resp.replace('\n', ' '))
       time.sleep(5)
     state.adbMode = "unknown"
     return False
