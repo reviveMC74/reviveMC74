@@ -332,6 +332,9 @@ def execu(cmd, stdin=None, showErr=True, returnStr=True):
   if type(cmd)==str:
     cmd = cmd.split(' ')
   cmd = [xx for xx in cmd if xx!='']  # Remove ' ' tokens caused by multiple space in str
+  if stdin and type(stdin)!=bytes:  # If stdin is not a bytes, on python3, convert it
+    stdin = stdin.encode()
+
   proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
     stderr=subprocess.PIPE)
   out, err = proc.communicate(stdin)
@@ -364,7 +367,10 @@ def execute(cmd, showErr=True, returnStr=True):
     out += err
   if returnStr and str(type(out))=="<type 'unicode'>":
     # Trying to make 'out' be an ASCII string whether in py2 or py3, sigh.
-    out = out.encode()  # Convert UNICODE (u'xxx') to string
+    try:
+      out = out.encode()    # Convert UNICODE (u'xxx') to string
+    except: 
+      out = out.decode("utf-8")  # Needed for python3   bytes->str
   return out, proc.returncode
 
 
@@ -394,6 +400,10 @@ def readFile(fid):
   data = None
   with open(fid, 'rb') as ff:
     data = ff.read()
+    try:
+      data.encode  # Is this a python2 str? 
+    except:  # If data has no encode method, this is python3, decode it
+      data = data.decode("utf-8")  # Needed for python3   bytes->str
   return data
 
 
