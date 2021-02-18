@@ -354,7 +354,8 @@ def backupPartFunc():
     return False
     
   print("  --unpack "+imgFn+" and unpack the ramdisk")
-  resp, rc = executeLog("python "+installFilesDir+"/packBoot.py unpack "+imgFn)
+  resp, rc = executeLog(sys.executable+' '+installFilesDir+"/packBoot.py unpack "+imgFn)
+  # sys.executable is the name of the python interpreter we are running
 
   if makeOrig: # If img fn was NOT explicitly specified, rename to ...Orig
     try:
@@ -430,7 +431,8 @@ def fixPartFunc():
       return False
 
   logp("  -- repack ramdisk, repack "+imgId+".img")
-  resp, rc = executeLog("python "+installFilesDir+"/packBoot.py pack "+imgId+".img")
+  resp, rc = executeLog(sys.executable+' '+installFilesDir+"/packBoot.py pack "+imgId+".img")
+  # sys.executable is the name of the python interpreter we are running
   logp(prefix("__|", '\n'.join(listDir(os.getcwd(), False, 'rmcBoot.img'))))
   if os.path.isfile(imgId+".img"):  # Make sure no .img file, we will rename
     hndExcept()
@@ -675,6 +677,7 @@ def resetBFFFunc():
       +" and programs.")
   else:
     print("(There was no 'filesPresent.flag file.)")
+  return True
 
 
 def startPhoneFunc():
@@ -684,6 +687,7 @@ def startPhoneFunc():
   try:
     hndExcept()
   except: hndExcept()
+  return True
 
 
 def manualFunc():
@@ -691,6 +695,7 @@ def manualFunc():
   aa = arg
   try:
     hndExcept()
+    return True
   except: hndExcept()
 
 
