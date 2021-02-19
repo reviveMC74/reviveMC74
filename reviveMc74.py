@@ -68,7 +68,7 @@ options = bunch(
 )
 
 arg = bunch(  # Place to store args for objective funcs to use
-  part = "boot",  # Target partition to backup or fix/install, ie 'boot' or 'boot2'
+  part = "both",  # Target partition to backup or fix/install, ie 'boot', 'both' or 'boot2'
 )
 # Options:
 #   part  -- specify which parition to read or write(flash) data to
@@ -331,6 +331,8 @@ def backupPartFunc():
     return True  # backupBoot was already done, no need to backup boot
 
   partName = arg.part  # Get name of partition to backup, defaults to 'boot'
+  if partName=="both":
+    partName = "boot"
   partFid = "/dev/block/platform/sdhci.1/by-name/"+partName
   if 'img' in arg:
     imgFn = arg.img
@@ -378,6 +380,8 @@ def fixPartFunc():
     return False
 
   partName = arg.part  # Get name of partition to backup, defaults to 'boot'
+  if partName=="both":
+    partName = "boot"
   imgId = 'rmc'+partName[:1].upper()+partName[1:]
 
   if partName=='boot' and 'fixBootPart' in state and state.fixBootPart \
@@ -458,7 +462,11 @@ def flashPartFunc():
   specifiying 'part=???' and/or 'img=???' options, any image can be written
   to any partition.
   ''' 
+  doBoth = False
   partName = arg.part  # Get name of partition to backup, defaults to 'boot'
+  if partName == "both":
+    partName = "boot"
+    doBoth = True
   partFid = "/dev/block/platform/sdhci.1/by-name/"+partName
   if 'img' in arg:
     imgFn = arg.img
@@ -476,11 +484,19 @@ def flashPartFunc():
   if rc!=0:
     state.error.append("Writing "+imgFn+" on device failed")
     return False
+
   resp, rc = executeLog("adb shell dd if=/cache/"+imgFn+" of="+partFid
     +" ibs=4096")
   if rc!=0:
     state.error.append("Copying "+imgFn+" on device, to "+partName+" failed")
     return False
+  if doBoth:
+    resp, rc = executeLog("adb shell dd if=/cache/"+imgFn+" of="+partFid+'2'
+      +" ibs=4096")
+    if rc!=0:
+      state.error.append("Copying "+imgFn+" on device, to "+partName+"2 failed")
+      return False
+
   resp, rc = executeLog("adb shell rm /cache/"+imgFn)
 
   if partName[:4]=='boot':

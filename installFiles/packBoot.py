@@ -42,7 +42,7 @@ def unpack(biFn):
 
   resp, rc = execute("gunzip "+biFn+"-ramdisk.gz")
   print("gunzip "+biFn+"-ramdisk.gz: "+str(rc)+"\n"+resp)
-  rd = readFile(biFn+"-ramdisk")
+  rd = readFile(biFn+"-ramdisk", ascii=False)
   print("ramdisk "+str(len(rd))+" bytes")
   lsRdOrig, rc = execu("cpio -i -tv", rd)
   writeFile("../"+fn+"LsRdOrig", lsRdOrig)
