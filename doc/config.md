@@ -109,7 +109,7 @@ or
 
 ### Weather Radar Page
 
-![Weather Radar Page](doc/weatherRadar.png)
+![Weather Radar Page](weatherRadar.png)
 
 The weather radar menu item on the left 'slide out' menu is defined be following part of the
 MC74.mp configuration object:
@@ -138,7 +138,7 @@ that provides the weather info) to find the location.
 
 ### Weather Graph Page
 
-![Weather Graph Page](doc/weatherGraph.png)
+![Weather Graph Page](weatherGraph.png)
 
 The weather graph menu item on the left 'slide out' menu is defined be following part of the
 MC74.mp configuration object:
