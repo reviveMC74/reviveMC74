@@ -42,7 +42,8 @@ neededFiles = bunch(
 installFiles = bunch(
   lights = ["lights", "/system/bin", "chmod 755"],
   sockSvr = ["sockSvr", "/system/bin", "chmod 755"],
-  hex = ["hex", "/system/bin", "chmod 755"]
+  hex = ["hex", "/system/bin", "chmod 755"],
+  hex = ["pp", "/system/bin", "chmod 755"]
 )
 
 installApps = bunch(
@@ -520,6 +521,9 @@ def flashPartFunc():
 def installAppsFunc():
   if adbModeFunc("normal")==False:  # Get into normal operation
     return False
+
+  # TTD: add /ssm symlink, disable tunnel, change telsacoilsw launcher DB
+
 
   logp("\ninstallAppsFunc, uninstall dialer2, droidNode, droidNodeSystemSvc, if not already done")
 
