@@ -107,9 +107,9 @@ or
 
 
 
-## Weather Radar Page
+### Weather Radar Page
 
-![Weather Radar Page](doc/weatherRadar.jpg)
+![Weather Radar Page](doc/weatherRadar.png)
 
 The weather radar menu item on the left 'slide out' menu is defined be following part of the
 MC74.mp configuration object:
@@ -134,3 +134,17 @@ storms usually come in from that direction.
 
 If latLong is omitted, the text in the 'location' entry use passed to (weather.gov, the website
 that provides the weather info) to find the location.
+
+
+### Weather Graph Page
+
+![Weather Graph Page](doc/weatherGraph.png)
+
+The weather graph menu item on the left 'slide out' menu is defined be following part of the
+MC74.mp configuration object:
+
+    sideMenu: ''
+      wGraph: 'Weather Forecast Graph'
+	img: 'menu_weather'
+	act: 'ribo.phone.WebAct'
+	cmd: 'http://localhost:1808/weather/graph'
