@@ -137,6 +137,12 @@ SIP addresses use the 'Settings' side menu item.
 ### Phone Software
 reviveMC74 keeps the original Android 4.2.3 (JellyBean api level 17) operating system on the MC74.  A version of the Linphone Soft VOIP application is installed.  A com.teslacoil Android Launcher is included to allow other Android apps to be launched.
 
+### Other Information
+
+Here's some more information about how to use and program the MC74:
+* [doc/config.md](reviveMC74 configuration files}
+* [doc/hardware.md]{Hardware and supporting software documentation)  
+
 ### Further Questions
 
 If you have any further questions, please talk with our community at https://reddit.com/r/ReviveMC74.
