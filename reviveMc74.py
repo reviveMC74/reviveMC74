@@ -43,7 +43,7 @@ installFiles = bunch(
   lights = ["lights", "/system/bin", "chmod 755"],
   sockSvr = ["sockSvr", "/system/bin", "chmod 755"],
   hex = ["hex", "/system/bin", "chmod 755"],
-  hex = ["pp", "/system/bin", "chmod 755"]
+  pp = ["pp", "/system/bin", "chmod 755"]
 )
 
 installApps = bunch(
@@ -442,6 +442,15 @@ def fixPartFunc():
       logp("  !! Can't find: "+fn+" in "+os.getcwd())
       return False
 
+    # Add symlink to /ssm
+    # in /init.rc after 'symlink /system/etc /etc' insert symlink /storage/emulated/legacy/ssm /ssm
+    # in init.bcm911130_me1.rc after symlink.../sdcard  symlink /storage/emulated/legacy/ssm /ssm2
+    editFile(imgId+"Ramdisk/init.rc", "symlink /system/etc",
+      insert="symlink /storage/emulated/legacy/ssm /ssm\n")
+    editFile(imgId+"Ramdisk/init.bcm911130_me1.rc", "symlink /storage/emulated/legacy /sdcard",
+      insert="symlink /storage/emulated/legacy/ssm /ssm\n")
+
+
   logp("  -- repack ramdisk, repack "+imgId+".img")
   resp, rc = executeLog(sys.executable+' '+installFilesDir+"/packBoot.py pack "+imgId+".img")
   # sys.executable is the name of the python interpreter we are running
@@ -565,6 +574,11 @@ def installAppsFunc():
     if doInstall:
       logp("--installing app: "+id+"     ("+newDt+' '+newTm+' '+str(newSz)+")")
       resp, rc = executeLog("adb install -t -r "+installFilesDir+"/"+fid)
+  
+  # Make the shell prompt something short
+  resp, rc = execute("adb shell rm /sdcard/SHELL_PROMPT")  # File is used by /system/etc/mkshrc
+  resp, rc = execute("adb shell touch /sdcard/SHELL_PROMPT")
+
   
   state.installApps = True
   return True
@@ -806,6 +820,46 @@ def versionFunc():
   print("\nVersion Info:\n"+infoStr)
   writeFile("version.info", infoStr)
   return True
+
+
+def editFile(fid, find="<editMe>", replace=None, insert=None, delete=None):
+  '''Simple edit of a file.  Find first line containing 'find' string, then 'insert' a line
+    lines, and/or 'replace' the line we found, or delete the line found, then write back to
+    (local) disk.
+  '''
+  logp("  -- editFile "+fid+" find '"+find+"'")
+  try:
+    body = readFile(fid)
+    
+    # other fixes (not implemented yet)
+    #print("  (UIF create sym link from /ssm to /sdcard/ssm)");
+    
+    pp = []
+    for ln in body.split('\n'):
+      if ln[-1:]=='\r':  ln = ln[:-1]  # Remove \r from \r\n on windows systems
+      if find and ln.find(find)!=-1:  # Does this line contain the content we need to find?
+        find = None  # Remove the 'find' string now that we found it
+        if replace:  # If the line is to be replaced, replace it, otherwise add it
+          pp.append(replace)
+        elif not delete:
+          pp.append(ln)
+        
+        if insert:  # Insert a list of lines, or just one line
+          if type(insert)==list:
+            for il in insert:
+              pp.append(il)
+          else:
+            pp.append(insert)
+      else:
+        pp.append(ln)  # This is not the line you are looking for, just copy the file
+        
+    if find:
+      logp("  !! Failed to find '"+find+"' in "+fid)
+    writeFile(fid, '\n'.join(pp))
+    
+  except IOError as err:
+    logp("  !! Can't find: "+fid+" in "+os.getcwd())
+    return False
 
 
 def getDateTime(iList, fn):
