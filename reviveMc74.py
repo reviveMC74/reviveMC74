@@ -384,7 +384,7 @@ def fixPartFunc():
   ''' Edit default.prop file (and perhaps other) from rmcBootRamdisk directory, then pack the 
       ramdisk back into a rmcBoot.img file
   '''
-  if backupPartFunc()==False:
+  if target!="fixPart" and backupPartFunc()==False:
     return False
 
   partName = arg.part  # Get name of partition to backup, defaults to 'boot'
@@ -424,7 +424,6 @@ def fixPartFunc():
 
       # other fixes (not implemented yet)
       print("  (UIF create sym link from /ssm to /sdcard/ssm)");
-      print("  (UIF change prompt to be '\\n# ' (shorten it))");
 
       # Remove \r from \r\n on windows systems
       pp = []
@@ -446,10 +445,9 @@ def fixPartFunc():
     # in /init.rc after 'symlink /system/etc /etc' insert symlink /storage/emulated/legacy/ssm /ssm
     # in init.bcm911130_me1.rc after symlink.../sdcard  symlink /storage/emulated/legacy/ssm /ssm2
     editFile(imgId+"Ramdisk/init.rc", "symlink /system/etc",
-      insert="symlink /storage/emulated/legacy/ssm /ssm\n")
+      insert="    symlink /storage/emulated/legacy/ssm /ssm")
     editFile(imgId+"Ramdisk/init.bcm911130_me1.rc", "symlink /storage/emulated/legacy /sdcard",
-      insert="symlink /storage/emulated/legacy/ssm /ssm\n")
-
+      insert="    symlink /storage/emulated/legacy/ssm /ssm2")
 
   logp("  -- repack ramdisk, repack "+imgId+".img")
   resp, rc = executeLog(sys.executable+' '+installFilesDir+"/packBoot.py pack "+imgId+".img")
@@ -551,6 +549,12 @@ def installAppsFunc():
       +" "+instFl[1]+'/'+instFl[0]) 
     if len(instFl)>2:  # If there is a fixup cmd, do it (usually chmod)
       resp, rc = executeLog("adb shell "+instFl[2]+" "+instFl[1]+'/'+instFl[0])
+
+  # Replace click with sockSvr to disable Mtunnel, first save a backup
+  resp, rc = execute("adb ls /system/bin/clickOrig")
+  if resp.find("No such file")>0:
+    resp, rc = executeLog("adb shell mv /system/bin/click /system/bin/clickOrig")
+  resp, rc = executeLog("adb shell ln -s /system/bin/sockSvr /system/bin/click")
 
   # Install/update new apps
   for id in installApps:
@@ -834,22 +838,32 @@ def editFile(fid, find="<editMe>", replace=None, insert=None, delete=None):
     # other fixes (not implemented yet)
     #print("  (UIF create sym link from /ssm to /sdcard/ssm)");
     
+    lines = body.split('\n')
     pp = []
-    for ln in body.split('\n'):
+    for lnNo in range(0, len(lines)):
+      ln = lines[lnNo]  # Get lines by index number so we can inspect/insert/delete future lines
       if ln[-1:]=='\r':  ln = ln[:-1]  # Remove \r from \r\n on windows systems
       if find and ln.find(find)!=-1:  # Does this line contain the content we need to find?
         find = None  # Remove the 'find' string now that we found it
         if replace:  # If the line is to be replaced, replace it, otherwise add it
           pp.append(replace)
         elif not delete:
-          pp.append(ln)
+          pp.append(ln)  # Keep this line, others may be inserted next
         
         if insert:  # Insert a list of lines, or just one line
-          if type(insert)==list:
-            for il in insert:
-              pp.append(il)
+          # Avoid creating duplicate inserts if fixPart is run multiple times
+          firstInsert = insert if type(insert)==str else insert[0]
+          print("firstInsert '"+firstInsert+"'")
+          print("next line   '"+lines[lnNo+1]+"' ("+str(len(lines)>lnNo+1)+" "+str(len(lines)>lnNo+1 and lines[lnNo+1]!=firstInsert)+")")
+          if len(lines)>lnNo+1 and lines[lnNo+1]!=firstInsert:
+            hndExcept()
+            if type(insert)==list:
+              for il in insert:
+                pp.append(il)
+            else:
+              pp.append(insert)
           else:
-            pp.append(insert)
+            logp("  (ignoring duplicate insertion edit request for: '"+firstInsert+"'")
       else:
         pp.append(ln)  # This is not the line you are looking for, just copy the file
         
