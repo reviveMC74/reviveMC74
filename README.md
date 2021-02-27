@@ -140,8 +140,8 @@ reviveMC74 keeps the original Android 4.2.3 (JellyBean api level 17) operating s
 ### Other Information
 
 Here's some more information about how to use and program the MC74:
-* [doc/config.md](reviveMC74 configuration files}
-* [doc/hardware.md]{Hardware and supporting software documentation)  
+* [reviveMC74 configuration files](doc/config.md)
+* [Hardware and supporting software information](dod/hardware.md)
 
 ### Further Questions
 
