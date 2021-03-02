@@ -396,14 +396,19 @@ class bunch(dict):  # Object that allows attributes to be added freely
     self.__dict__ = self
 
 
-def readFile(fid):
+def readFile(fid, ascii=True):
+  '''Read a file, named fid, return contents as a str, unless ascii=False,
+     Then return it as a bytes. 
+     (Python3 can't decode an binary file into a str!)'''
+   
   data = None
   with open(fid, 'rb') as ff:
     data = ff.read()
-    try:
-      data.encode  # Is this a python2 str? 
-    except:  # If data has no encode method, this is python3, decode it
-      data = data.decode("utf-8")  # Needed for python3   bytes->str
+    if ascii: 
+      try:
+        data.encode
+      except:
+        data = data.decode("utf-8")
   return data
 
 
