@@ -449,10 +449,10 @@ def fixPartFunc():
     # Add symlink to /ssm
     # in /init.rc after 'symlink /system/etc /etc' insert symlink /storage/emulated/legacy/ssm /ssm
     # in init.bcm911130_me1.rc after symlink.../sdcard  symlink /storage/emulated/legacy/ssm /ssm2
-    editFile(imgId+"Ramdisk/init.rc", "symlink /system/etc",
-      insert="    symlink /storage/emulated/legacy/ssm /ssm")
-    editFile(imgId+"Ramdisk/init.bcm911130_me1.rc", "symlink /storage/emulated/legacy /sdcard",
-      insert="    symlink /storage/emulated/legacy/ssm /ssm2")
+    #editFile(imgId+"Ramdisk/init.rc", "symlink /system/etc",
+    #  insert="    symlink /storage/emulated/legacy/ssm /ssm")
+    #editFile(imgId+"Ramdisk/init.bcm911130_me1.rc", "symlink /storage/emulated/legacy /sdcard",
+    #  insert="    symlink /storage/emulated/legacy/ssm /ssm2")
 
   logp("  -- repack ramdisk, repack "+imgId+".img")
   resp, rc = executeLog(sys.executable+' '+installFilesDir+"/packBoot.py pack "+imgId+".img")
