@@ -868,8 +868,9 @@ def editFile(fid, find="<editMe>", replace=None, insert=None, delete=None):
         if insert:  # Insert a list of lines, or just one line
           # Avoid creating duplicate inserts if fixPart is run multiple times
           firstInsert = insert if type(insert)==str else insert[0]
-          print("firstInsert '"+firstInsert+"'")
-          print("next line   '"+lines[lnNo+1]+"' ("+str(len(lines)>lnNo+1)+" "+str(len(lines)>lnNo+1 and lines[lnNo+1]!=firstInsert)+")")
+          print("    firstInsert '"+firstInsert+"'")
+          print("    next line   '"+lines[lnNo+1]+"' ("+str(len(lines)>lnNo+1)
+            +" "+str(len(lines)>lnNo+1 and lines[lnNo+1]!=firstInsert)+")")
           if len(lines)>lnNo+1 and lines[lnNo+1]!=firstInsert:
             hndExcept()
             if type(insert)==list:
