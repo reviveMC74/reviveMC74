@@ -504,15 +504,16 @@ def flashPartFunc():
     print("    remote "+partName+".versionDate timestamp: "+instDt+' '+instTm+' '+str(instSz))
 
     if imgDt==instDt and imgTm==instTm:
-      logp("    ("+imgFn+" timestamp matches installed versionDate, skipping flash of "+partName+")")
+      logp("    ("+imgFn+" timestamp matches installed versionDate, skipping flash of "
+        +partName+")")
       return True
 
   # If the partition image file doesn't exist, run the fixPartFunc
-  if os.path.isfile(imgFn)==False and arg.part[:4]=='boot':
+  if os.path.isfile(imgFn)==False and partName[:4]=='boot':
     if fixPartFunc()==False:
       return False
 
-  logp("flashPartFunc, writing "+imgFn+" to "+partFid)
+  logp("  flashPartFunc, writing "+imgFn+" to "+partFid)
   resp, rc = executeLog("adb push "+imgFn+" /cache/"+imgFn)
   if rc!=0:
     state.error.append("Writing "+imgFn+" on device failed")
