@@ -7,4 +7,4 @@ __pycache__
 rmcBoot*
 uBootEnv
 version.info
-
+*.versionDate

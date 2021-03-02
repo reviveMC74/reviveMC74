@@ -114,8 +114,6 @@ def reviveMain(args):
     target = "revive"
   else:
     target = args.pop(0)  # Take first token (after the options) as final objective
-  log("\nreviveMC74 "+target+"-"+','.join(args)  \
-    +" --------------------------------------------------------------")
 
   # Parse args, set them as variables in global 'arg' var
   for tok in args:
@@ -176,7 +174,8 @@ def reviveMain(args):
     print("Can't find function for objective '"+target+"'")
     return
 
-  print("  "+target+" Function:")  
+  print(target+" Function: "+' '.join(args))  
+  log(target+' '.join(args)+"===================================================================", prefix="\n")
   if func():
     print("Acheived objective '"+target+"'")
   else:
@@ -215,24 +214,30 @@ def findLine(data, searchStr):
       return line
 
 
-def executeLog(cmd, showErr=True):
+def executeLog(cmd, showErr=True, ignore=None):
   '''Execute an operating system command and log the command and response'''
   print("    Executing: '"+str(cmd)+"'")
   ret = execute(cmd, showErr)
-  logp("  '"+str(cmd)+"'  (rc="+str(ret[1])+")\n"+prefix('      |', ret[0]))
+  resp = "    '"+str(cmd)+"'  (rc="+str(ret[1])+")\n"+prefix('      |', ret[0])
+  if ignore and ret[0].find(ignore)!=-1:  # Does the response contain the string to ignore
+    log(resp)  # This error response is okay, don't print to console
+    # Usually done with a command which is okay to fail, like erasing a file that is not there.
+  else :
+    logp(resp)
   return ret
 
 
-def log(msg):
+def log(msg, prefix=""):
   fp = open(logFid, 'ab')
+  if prefix: fp.write(prefix)  # Usually used to prefix line with a \n LF
   ts = datetime.datetime.now().strftime("%y/%m/%d-%H:%M:%S")
   fp.write(str.encode(ts+" "+msg+'\n'))
   fp.close()
 
 
-def logp(msg):
-  print(msg)
-  log(msg)
+def logp(msg, prefix=""):
+  print(prefix+msg)
+  log(msg, prefix=prefix)
 
 
 def prefix(prefix, msg):
@@ -300,7 +305,7 @@ def replaceRecoveryFunc():
       if adbModeFunc("fastboot")==False: 
         return False
 
-    logp("\n--replaceRecovery partition")
+    logp("--replaceRecovery partition")
     logp("  --Writng revovery partition image:  "+neededFiles.recoveryClockImg)
     resp, rc = executeLog("fastboot flash recovery "+installFilesDir+"/"+neededFiles.recoveryClockImg)
 
@@ -350,7 +355,7 @@ def backupPartFunc():
     makeOrig = True
 
 
-  logp("\nbackupPart "+partName+" partition: "+partFid)
+  logp("backupPart "+partName+" partition: "+partFid)
   resp, rc = executeLog("adb shell dd if="+partFid+" of=/cache/"+imgFn+" ibs=4096")
   resp, rc = execute("adb pull /cache/"+imgFn+" .")
   resp, rc = executeLog("adb shell rm /cache/"+imgFn)
@@ -398,7 +403,7 @@ def fixPartFunc():
     return True  # For normal revive, if boot is fixed, skip it
     # If this is an explicit request to fixPart, do it
 
-  logp("\nfixPartFunc "+imgId+".img to make it rooted.")
+  logp("fixPartFunc "+imgId+".img to make it rooted.")
   try:
     os.remove(imgId+'.img')
   except:  pass
@@ -491,16 +496,23 @@ def flashPartFunc():
   # If flashPart was not explicitly called, test to see if it has been done
   if target != "flashPart":
     # Check timestamp of rmcBoot.img with copy stored in /cache/boot.versionDate
-    imgDt, imgTm, imgSz = fileDtTm(imgFn)
-    print("    "+imgFn+" timestamp: "+imgDt+' '+imgTm)
-    # if upToDate, return True
+    imgDt, imgTm, imgSz = fileDtTm(imgFn)  # Get timestamp of the local boot.img
+    print("    local "+imgFn+" timestamp: "+imgDt+' '+imgTm+' '+str(imgSz))
+    resp, rc = execute("adb pull /cache/"+partName+".versionDate .")
+    vDate = readFile(partName+".versionDate").split(' ')
+    instDt, instTm, instSz = vDate
+    print("    remote "+partName+".versionDate timestamp: "+instDt+' '+instTm+' '+str(instSz))
+
+    if imgDt==instDt and imgTm==instTm:
+      logp("    ("+imgFn+" timestamp matches installed versionDate, skipping flash of "+partName+")")
+      return True
 
   # If the partition image file doesn't exist, run the fixPartFunc
   if os.path.isfile(imgFn)==False and arg.part[:4]=='boot':
     if fixPartFunc()==False:
       return False
 
-  logp("\nflashPartFunc, writing "+imgFn+" to "+partFid)
+  logp("flashPartFunc, writing "+imgFn+" to "+partFid)
   resp, rc = executeLog("adb push "+imgFn+" /cache/"+imgFn)
   if rc!=0:
     state.error.append("Writing "+imgFn+" on device failed")
@@ -520,6 +532,11 @@ def flashPartFunc():
 
   resp, rc = executeLog("adb shell rm /cache/"+imgFn)
 
+  # Record timestamp and size of partition image file to allow for flashPart verification above
+  partDate = fileDtTm(imgFn) 
+  partDate = partDate[0]+' '+partDate[1]+' '+str(partDate[2])
+  resp, rc = executeLog("adb shell echo '"+partDate+"' > /cache/"+partName+".versionDate")
+
   if partName[:4]=='boot':
     state.fixBootPart = True
   return True
@@ -532,18 +549,18 @@ def installAppsFunc():
   # TTD: add /ssm symlink, disable tunnel, change telsacoilsw launcher DB
 
 
-  logp("\ninstallAppsFunc, uninstall dialer2, droidNode, droidNodeSystemSvc, if not already done")
+  logp("installAppsFunc, uninstall dialer2, droidNode, droidNodeSystemSvc, if not already done")
 
-  # Uninstall apps
-  resp, rc = executeLog("adb shell rm /system/app/DroidNode.apk")
-  resp, rc = executeLog("adb shell rm /systemls/app/DroidNodeSystemSvcs.apk")
-  resp, rc = executeLog("adb uninstall ribo.audtest")
-  resp, rc = executeLog("adb uninstall package:com.meraki.dialer2")
-  resp, rc = executeLog("adb shell rm /data/app/com.meraki.dialer2-2.apk")
+  # Uninstall apps.  Ignore errors where the file to remove is already not there.
+  resp, rc = executeLog("adb shell rm /system/app/DroidNode.apk", ignore="No such file")
+  resp, rc = executeLog("adb shell rm /systemls/app/DroidNodeSystemSvcs.apk", ignore="No such file")
+  resp, rc = executeLog("adb uninstall ribo.audtest", ignore="Failure")
+  resp, rc = executeLog("adb uninstall package:com.meraki.dialer2", ignore="Failure")
+  resp, rc = executeLog("adb shell rm /data/app/com.meraki.dialer2-2.apk", ignore="No such file")
 
   # Install programs
   for id in installFiles:
-    print("--install file/program: "+id)
+    print("  --install file/program: "+id)
     instFl = installFiles[id]
     resp, rc = executeLog("adb push "+installFilesDir+"/"+instFl[0] 
       +" "+instFl[1]+'/'+instFl[0]) 
@@ -554,7 +571,7 @@ def installAppsFunc():
   resp, rc = execute("adb ls /system/bin/clickOrig")
   if resp.find("No such file")>0:
     resp, rc = executeLog("adb shell mv /system/bin/click /system/bin/clickOrig")
-  resp, rc = executeLog("adb shell ln -s /system/bin/sockSvr /system/bin/click")
+  resp, rc = executeLog("adb shell ln -s /system/bin/sockSvr /system/bin/click", ignore="File exists")
 
   # Install/update new apps
   for id in installApps:
@@ -565,9 +582,7 @@ def installAppsFunc():
     # If app is already installed see if we have a newer version
     doInstall = True
     instDt, instTm, instSz = remoteFileDtTm("/data/app/"+appTag+"*", appTag)
-    if instDt == None:
-      logp("    no "+id+" present")
-    else:
+    if instDt != None:
       logp("    installed copy of "+id+": "+instDt+" "+instTm+"  size: "+str(instSz))
       # Is the installed apk, instDt the same or new?
       if newDt<=instDt and newSz==instSz:
@@ -576,7 +591,7 @@ def installAppsFunc():
         doInstall = False
      
     if doInstall:
-      logp("--installing app: "+id+"     ("+newDt+' '+newTm+' '+str(newSz)+")")
+      logp("  --installing app: "+id+"     ("+newDt+' '+newTm+' '+str(newSz)+")")
       resp, rc = executeLog("adb install -t -r "+installFilesDir+"/"+fid)
   
   # Make the shell prompt something short
@@ -639,7 +654,7 @@ def adbModeFunc(targetMode="adb"):
         return True
       isFastboot = True
   
-  logp("\n  --adbModeFunc, currentMode: "+currentMode+", targetMode: "+targetMode
+  logp("  --adbModeFunc, currentMode: "+currentMode+", targetMode: "+targetMode
     +(" adb" if isAdb else "")+(" normal" if isNormal else "")+(" fastboot" if isFastboot else ""))
   
   if currentMode == targetMode:
@@ -719,7 +734,7 @@ def adbModeFunc(targetMode="adb"):
 
 
 def resetBFFFunc():
-  logp("\nresetBFFFunc")
+  logp("resetBFFFunc")
   if os.path.isfile(filesPresentFid):
     os.remove(filePresentFid)
     print("The filesPresent.flag file was removed, next time you run"
@@ -731,7 +746,7 @@ def resetBFFFunc():
 
 
 def startPhoneFunc():
-  logp("\nstartPhoneFunc")
+  logp("startPhoneFunc")
   resp, rc = executeLog("adb shell am startservice ribo.ssm/.SSMservice")
   resp, rc = executeLog("adb shell am start revive.MC74/org.linphone.dialer.DialerActivity")
   resp, rc = executeLog("adb shell am force-stop com.meraki.droidnode")
@@ -741,7 +756,7 @@ def startPhoneFunc():
 
 
 def manualFunc():
-  logp("\nmanualFunc Enter commands on console...")
+  logp("\n Enter python commands on console...\n")
   try:
     hndExcept()
     return True
@@ -749,7 +764,7 @@ def manualFunc():
 
 
 def versionFunc():
-  logp("\nversionFunc --Gathers information about the software version on the MC74")
+  logp("versionFunc --Gathers information about the software version on the MC74")
   if state.adbMode != 'adb':
     if adbModeFunc("adb")==False: 
       print("Sorry, the MC74 needs to have ADB working in recovery or normal "
@@ -887,11 +902,16 @@ def getDateTime(iList, fn):
     
 
 def fileDtTm(fid):
-  dt = os.path.getmtime(fid)
-  ts = datetime.datetime.fromtimestamp(dt).strftime('%Y-%m-%d %H:%M:%S')
-  sz = os.path.getsize(fid)
-  dt, tm = ts.split(' ')
-  return [dt, tm, sz]
+  try:
+    dt = os.path.getmtime(fid)
+    ts = datetime.datetime.fromtimestamp(dt).strftime('%Y-%m-%d %H:%M:%S')
+    sz = os.path.getsize(fid)
+    dt, tm = ts.split(' ')
+    return [dt, tm, sz]
+  except Exception as ex:
+    logp("    ("+ex.strerror+", local file: "+fid+")")
+  return [None, None, 0]
+
 
 def remoteFileDtTm(fid, tag=None):
   if tag == None: tag = fid
@@ -901,7 +921,7 @@ def remoteFileDtTm(fid, tag=None):
     for ln in resp.split('\n'):
       if ln.find(tag)>0:  # If this line of ls -l is the one for this file...
         if ln.find("No such") != -1:
-          logp("    no "+tag+" present")
+          logp("    (remoteFile"+fid+" present ("+tag+"))")
           break
         sz, dt, tm, fn = ln.split(' ')[-4:]
         remDtTm = [dt, tm, int(sz)]
@@ -959,4 +979,10 @@ objectives = [
 if __name__ == "__main__":
   try:
     reviveMain(sys.argv[1:])
-  except: hndExcept()
+  except Exception as xx:
+    import traceback
+    logp("reviveMC74 exception: "+rformat(xx))
+    tb = sys.exc_info()[2]
+    st = traceback.extract_tb(tb)
+    logp(prefix("  |", rformat(st)))
+    hndExcept()
