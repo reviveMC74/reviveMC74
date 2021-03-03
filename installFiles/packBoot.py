@@ -37,15 +37,23 @@ def unpack(biFn):
     except:
       pass  # Directory may exist
     return False
-  print("ls-unpack "+os.getcwd()+":\n"+prefix("--|", '\n'.join(listDir(os.getcwd(),
+
+  # Remove the 'rmcBoot.imgRaw-' prefix from all the file names
+  for ff in listDir(os.getcwd(), False):
+    newFn = ff.split('-', 1)[1]
+    shutil.move(ff, newFn)
+
+  print("ls-unpack "+os.getcwd()+":\n"+prefix("--|", '\n'.join(listDir('.',
     False))))
 
-  resp, rc = execute("gunzip "+biFn+"-ramdisk.gz")
-  print("gunzip "+biFn+"-ramdisk.gz: "+str(rc)+"\n"+resp)
-  rd = readFile(biFn+"-ramdisk", ascii=False)
+  resp, rc = execute("gunzip ramdisk.gz")
+  print("gunzip ramdisk.gz: "+str(rc)+"\n"+resp)
+  rd = readFile("ramdisk", ascii=False)
   print("ramdisk "+str(len(rd))+" bytes")
   lsRdOrig, rc = execu("cpio -i -tv", rd)
-  writeFile("../"+fn+"LsRdOrig", lsRdOrig)
+  #writeFile("../"+fn+"LsRdOrig", lsRdOrig)
+  #print(lsRdOrig)
+  #import pdb; pdb.set_trace()
 
   os.chdir("..")
   rdDir = fn+"Ramdisk"
@@ -59,7 +67,7 @@ def unpack(biFn):
   
   resp, rc = execu("cpio -i -m", rd)
     # -m is preservce file modification time
-  print("cpio -i <"+biFn+"-ramdisk: "+str(rc)+"\n"+resp)
+  print("cpio -i <ramdisk: "+str(rc)+"\n"+resp)
   
 
 def pack(biFn):
@@ -86,7 +94,7 @@ def pack(biFn):
   
   pr(fList)
 
-  outFid = "../"+unDir+"/"+biFn+"-ramdisk"
+  outFid = "../"+unDir+"/ramdisk"
   rd, rc = execu("cpio -o -H newc -R 0.0 -F "+outFid, fList, showErr=False,
     returnStr=False)
   print("cpio -o  rc="+str(rc)+", "+str(os.path.getsize(outFid))+" bytes")
@@ -97,27 +105,27 @@ def pack(biFn):
   print("ls-pack "+os.getcwd()+":\n"+prefix("--|", '\n'.join(listDir(os.getcwd(),
     False))))
   #try:
-  #  os.remove(biFn+"-ramdisk")
+  #  os.remove("ramdisk")
   #except: pass
-  #writeFile(biFn+"-ramdisk", rd)
-  lsRdNew, rc = execute("cpio -tv -I "+biFn+"-ramdisk")
+  #writeFile("ramdisk", rd)
+  #lsRdNew, rc = execute("cpio -tv -I ramdisk")
 
 
   # Compress ramdisk
   try:
-    os.remove(biFn+"-ramdisk.gz")
+    os.remove("ramdisk.gz")
   except: pass
-  resp, rc = execute("gzip "+biFn+"-ramdisk")
+  resp, rc = execute("gzip ramdisk")
   print(" ramdisk gzipped "+str(rc))
 
 
   # Build file system image file
-  cmdline = removeCRLF(readFile(biFn+"-cmdline"))
-  base = removeCRLF(readFile(biFn+"-base"))
-  pagesize = removeCRLF(readFile(biFn+"-pagesize"))
+  cmdline = removeCRLF(readFile("cmdline"))
+  base = removeCRLF(readFile("base"))
+  pagesize = removeCRLF(readFile("pagesize"))
   ts = datetime.now().strftime("%y%m%d%H%M")
-  cmd = ["mkbootimg", "--kernel", biFn+"-zImage",
-    "--ramdisk", biFn+"-ramdisk.gz", "--cmdline", '"'+cmdline+'"',
+  cmd = ["mkbootimg", "--kernel", "zImage",
+    "--ramdisk", "ramdisk.gz", "--cmdline", cmdline,
     "--base", "0x"+base, "--pagesize", pagesize, "--output", "../"+biFn+ts ]
   # Note: --cmdline contains spaces, we must pass the command as tokens so
   # execute() won't .split(' ') the command to prepare the args array
@@ -126,7 +134,7 @@ def pack(biFn):
   print("(rc="+str(rc)+") resp:\n"+prefix("  |", resp))
 
   os.chdir("..")
-  writeFile(fn+"LsRdNew", lsRdNew)
+  #writeFile(fn+"LsRdNew", lsRdNew)
 
 
 def listDir(dir, recursive=True, search=''):

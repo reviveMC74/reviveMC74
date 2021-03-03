@@ -294,9 +294,7 @@ def replaceRecoveryFunc():
   if findLine(resp, "ro.secure=0"):
     # This phone already has had the recovery replaced (ie shell cmd worked)
     # ro.secure has already been changed to '0', boot partition already fixed
-    state.fixBootPart = True
-    if os.path.isfile("rmcBoot.img"):
-      state.backupBoot = True  # No need to backup, boot partition already fixed
+    pass
 
   elif findLine(resp, "failed: No such file"):
     # The recovery partition has not been replaced, do it now
@@ -332,16 +330,17 @@ def replaceRecoveryFunc():
 
 
 def backupPartFunc():
-  '''Backup a disk partition from the MC74, defaults to the 'boot' partition.  If it is the boot or boot2
-  partition, it is then unpacked into the rmcBoot[2]Unpack and the ramdisk from that boot image is 
-  unpacked into the rmcBoot[2]Ramdisk directory.
+  '''Backup a disk partition from the MC74, defaults to the 'boot' partition.  If it is
+  the boot or boot2 partition, it is then unpacked into the rmcBoot[2]Unpack and the
+  ramdisk from that boot image is unpacked into the rmcBoot[2]Ramdisk directory.
+  For boot[2] paritiions, the backuped up img is named rmcBoot[2].imgRaw.  (
+  fixPartFunc will produce the rmcBoot[2].img file from the .imgRaw.)  The first time
+  backupPart backups up boot[2], it creates an rmcBoot[2].imgOrig copy of the .imgRaw.
+  Other partitions are backedup to rmcXXXX.img.
   '''
 
   if replaceRecoveryFunc()==False:
     return False
-  if "backupBoot" in state and state.backupBoot and target!="backupPart":
-    # If target is explicitly backupBoot, continue on
-    return True  # backupBoot was already done, no need to backup boot
 
   partName = arg.part  # Get name of partition to backup, defaults to 'boot'
   if partName=="both":
@@ -353,7 +352,8 @@ def backupPartFunc():
   else:
     imgFn = 'rmc'+partName[:1].upper()+partName[1:]+".img"
     makeOrig = True
-
+  if partName[:4]=='boot':
+    imgFn += "Raw"  # Backing up boot produces .imgRaw, fixPartFunc uses this to create .img
 
   logp("backupPart "+partName+" partition: "+partFid)
   resp, rc = executeLog("adb shell dd if="+partFid+" of=/cache/"+imgFn+" ibs=4096")
@@ -363,8 +363,12 @@ def backupPartFunc():
   if os.path.isfile(imgFn)==False:
     logp("!!Can't find "+imgFn+" after pulling it")
     return False
+
+  if partName[:4]!='boot':  # For non boot partitions we are done, success
+    return True
+
   biSize = os.path.getsize(imgFn)
-  if biSize!=8192*1024 and partName[:4]=='boot':
+  if biSize!=8192*1024: 
     print("--"+imgFn+" file size is "+str(biSize)+", should be 8388608")
     return False
     
@@ -372,16 +376,12 @@ def backupPartFunc():
   resp, rc = executeLog(sys.executable+' '+installFilesDir+"/packBoot.py unpack "+imgFn)
   # sys.executable is the name of the python interpreter we are running
 
-  if makeOrig: # If img fn was NOT explicitly specified, rename to ...Orig
-    try:
-      os.remove(imgFn+"Orig")
-    except:  pass
-    os.rename(imgFn, imgFn+"Orig")
+  if os.path.isfile(imgFn[:-3]+"Orig")==False:  # If no .imgOrig file, make it now
+    # We should never overwrite this copy, the original copy from the phone
+    # Subsequent explicit calls to backup and fix and flash boot partitions will operate
+    # on an .imgRaw copy
+    shutil.copy(imgFn, imgFn[:-3]+"Orig")
 
-  if partName[:4]=='boot':
-    state.backupBoot = True
-    state.fixBootPart = False  # Newly backuped up boot.img needs to be packed
-      # and written out / flashed
   return True
 
 
@@ -389,75 +389,74 @@ def fixPartFunc():
   ''' Edit default.prop file (and perhaps other) from rmcBootRamdisk directory, then pack the 
       ramdisk back into a rmcBoot.img file
   '''
-  if target!="fixPart" and backupPartFunc()==False:
-    return False
-
   partName = arg.part  # Get name of partition to backup, defaults to 'boot'
   if partName=="both":
     partName = "boot"
   imgId = 'rmc'+partName[:1].upper()+partName[1:]
+  rawFid = imgId+".imgRaw" if partName=="boot" else imgId+".img"
+  rawImgExists = os.path.isfile(rawFid)
 
-  if partName=='boot' and 'fixBootPart' in state and state.fixBootPart \
-    and target!="fixPart":
-    print("  --skipping fixPart for boot partition, already done")
+  if rawImgExists==False:
+    if backupPartFunc()==False:
+      return False
+
+  if partName[:4]!="boot":  # Only the boot[2] partition needs to be 'fixed'
+    return True
+
+  if target!="fixPart" and os.path.isfile(imgId+".img")==True:
+    print("  --skipping fixPart for "+imgId+".img partition, already done")
     return True  # For normal revive, if boot is fixed, skip it
     # If this is an explicit request to fixPart, do it
 
-  logp("fixPartFunc "+imgId+".img to make it rooted.")
+  logp("fixPartFunc "+imgId+".imgRaw to make it rooted.")
   try:
     os.remove(imgId+'.img')
   except:  pass
 
-  if partName[:4]=='boot':
-    # Edit default.props, change 'ro.secure=1' to 'ro.secure=0'
-    # and: persist.meraki.usb_debug=0 to ...=1
-    logp("  -- edit default.prop to change ro.secure to = 0")
+  # Edit default.props, change 'ro.secure=1' to 'ro.secure=0'
+  # and: persist.meraki.usb_debug=0 to ...=1
+  logp("  -- edit default.prop to change ro.secure to = 0")
+  try:
+    fn = imgId+"Ramdisk/default.prop"
+    prop = readFile(fn)
+    log("  default.prop:\n"+prefix('__', prop))
+
     try:
-      fn = imgId+"Ramdisk/default.prop"
-      prop = readFile(fn)
-      log("  default.prop:\n"+prefix('__', prop))
+      ii = prop.index('secure=')+7
+      prop = prop[:ii]+'0'+prop[ii+1:] # Change '1' to '0'
+    except:  print("  --failed to find/replace 'secure=1'")
+    try:
+      ii = prop.index('usb_debug=')+10
+      prop = prop[:ii]+'1'+prop[ii+1:] # Change '0' to '1'
+    except:  print("  --failed to find/replace 'secure=1'")
+    #log("itermediate default.prop:\n"++prefix('--', prop))
 
-      try:
-        ii = prop.index('secure=')+7
-        prop = prop[:ii]+'0'+prop[ii+1:] # Change '1' to '0'
-      except:  print("  --failed to find/replace 'secure=1'")
-      try:
-        ii = prop.index('usb_debug=')+10
-        prop = prop[:ii]+'1'+prop[ii+1:] # Change '0' to '1'
-      except:  print("  --failed to find/replace 'secure=1'")
-      #log("itermediate default.prop:\n"++prefix('--', prop))
+    # Remove \r from \r\n on windows systems
+    pp = []
+    for ln in prop.split('\n'):
+      if ln[-1:]=='\r':  ln = ln[:-1]
+      if len(ln)>0:
+        #print("      .."+ln)
+        pp.append(ln)
+    writeFile(imgId+"Ramdisk/default.prop", '\n'.join(pp))
+    # /default.prop will be ignored by system/core/init/init.c if writable by
+    # group/other
+    resp, rc = executeLog("chmod go-w "+imgId+"Ramdisk/default.prop")
+    log("    fixed "+partName+" default.prop:\n"+prefix('__', '\n'.join(pp)))
+  except IOError as err:
+    logp("  !! Can't find: "+fn+" in "+os.getcwd())
+    return False
 
-      # other fixes (not implemented yet)
-      print("  (UIF create sym link from /ssm to /sdcard/ssm)");
-
-      # Remove \r from \r\n on windows systems
-      pp = []
-      for ln in prop.split('\n'):
-        if ln[-1:]=='\r':  ln = ln[:-1]
-        if len(ln)>0:
-          #print("      .."+ln)
-          pp.append(ln)
-      writeFile(imgId+"Ramdisk/default.prop", '\n'.join(pp))
-      # /default.prop will be ignored by system/core/init/init.c if writable by
-      # group/other
-      resp, rc = executeLog("chmod go-w "+imgId+"Ramdisk/default.prop")
-      log("    fixed "+partName+" default.prop:\n"+prefix('__', '\n'.join(pp)))
-    except IOError as err:
-      logp("  !! Can't find: "+fn+" in "+os.getcwd())
-      return False
-
-    # Add symlink to /ssm
-    # in /init.rc after 'symlink /system/etc /etc' insert symlink /storage/emulated/legacy/ssm /ssm
-    # in init.bcm911130_me1.rc after symlink.../sdcard  symlink /storage/emulated/legacy/ssm /ssm2
-    #editFile(imgId+"Ramdisk/init.rc", "symlink /system/etc",
-    #  insert="    symlink /storage/emulated/legacy/ssm /ssm")
-    #editFile(imgId+"Ramdisk/init.bcm911130_me1.rc", "symlink /storage/emulated/legacy /sdcard",
-    #  insert="    symlink /storage/emulated/legacy/ssm /ssm2")
+  # Add symlink to /ssm
+  # in /init.rc after 'symlink /system/etc /etc' insert symlink /storage/emulated/legacy/ssm /ssm
+  # in init.bcm911130_me1.rc after symlink.../sdcard  symlink /storage/emulated/legacy/ssm /ssm2
+  editFile(imgId+"Ramdisk/init.rc", "symlink /system/etc",
+    insert="    symlink /storage/emulated/legacy/ssm /ssm")
 
   logp("  -- repack ramdisk, repack "+imgId+".img")
   resp, rc = executeLog(sys.executable+' '+installFilesDir+"/packBoot.py pack "+imgId+".img")
   # sys.executable is the name of the python interpreter we are running
-  logp(prefix("__|", '\n'.join(listDir(os.getcwd(), False, 'rmcBoot.img'))))
+  #logp(prefix("  __|", '\n'.join(listDir(os.getcwd(), False, 'rmcBoot.img'))))
   if os.path.isfile(imgId+".img"):  # Make sure no .img file, we will rename
     hndExcept()
   
@@ -467,7 +466,7 @@ def fixPartFunc():
     if fid[:len(imgId)+5] == imgId+'.img2':
       os.rename(fid, imgId+'.img')
       break
-  logp(prefix("..|", '\n'.join(listDir(os.getcwd(), False, 'rmcBoot.img'))))
+  log(prefix("  ..|", '\n'.join(listDir(os.getcwd(), False, 'rmcBoot.img'))))
 
   if os.path.isfile(imgId+".img"):  # Did packBoot succeed in creating .img file?
     return True
@@ -510,6 +509,7 @@ def flashPartFunc():
 
   # If the partition image file doesn't exist, run the fixPartFunc
   if os.path.isfile(imgFn)==False and partName[:4]=='boot':
+    logp("    ("+imgFn+" not found, calling fixPart to create it)")
     if fixPartFunc()==False:
       return False
 
@@ -538,8 +538,6 @@ def flashPartFunc():
   partDate = partDate[0]+' '+partDate[1]+' '+str(partDate[2])
   resp, rc = executeLog("adb shell echo '"+partDate+"' > /cache/"+partName+".versionDate")
 
-  if partName[:4]=='boot':
-    state.fixBootPart = True
   return True
   
 
@@ -873,7 +871,6 @@ def editFile(fid, find="<editMe>", replace=None, insert=None, delete=None):
           print("    next line   '"+lines[lnNo+1]+"' ("+str(len(lines)>lnNo+1)
             +" "+str(len(lines)>lnNo+1 and lines[lnNo+1]!=firstInsert)+")")
           if len(lines)>lnNo+1 and lines[lnNo+1]!=firstInsert:
-            hndExcept()
             if type(insert)==list:
               for il in insert:
                 pp.append(il)
