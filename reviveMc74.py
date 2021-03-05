@@ -909,12 +909,12 @@ def fileDtTm(fid):
     return [dt, tm, sz]
   except Exception as ex:
     logp("    ("+ex.strerror+", local file: "+fid+")")
-  return [None, None, 0]
+  return ["(noDate)", "(noTime)", 0]
 
 
 def remoteFileDtTm(fid, tag=None):
   if tag == None: tag = fid
-  remDtTm = [None, None, 0]
+  remDtTm = ["(noDate)", "(noTime)", 0]
   resp, rc = execute("adb shell ls -l "+fid)
   if rc==0:
     for ln in resp.split('\n'):
