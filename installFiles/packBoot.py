@@ -39,7 +39,7 @@ def unpack(biFn):
     return False
 
   # Remove the 'rmcBoot.imgRaw-' prefix from all the file names
-  for ff in listDir(os.getcwd(), False):
+  for ff in listDir('.', False):
     newFn = ff.split('-', 1)[1]
     shutil.move(ff, newFn)
 

@@ -229,7 +229,8 @@ def executeLog(cmd, showErr=True, ignore=None):
 
 def log(msg, prefix=""):
   fp = open(logFid, 'ab')
-  if prefix: fp.write(prefix)  # Usually used to prefix line with a \n LF
+  if prefix:
+    fp.write(str.encode(prefix))  # Usually used to prefix line with a \n LF
   ts = datetime.datetime.now().strftime("%y/%m/%d-%H:%M:%S")
   fp.write(str.encode(ts+" "+msg+'\n'))
   fp.close()
@@ -339,6 +340,12 @@ def backupPartFunc():
   Other partitions are backedup to rmcXXXX.img.
   '''
 
+  # First verify that the adb connection is in root mode
+  resp, rc = executeLog("adb shell id")
+  if resp.find("(root)")==-1:
+    logp("!! adb is not in 'root' mode, can't continue")
+    return False
+
   if replaceRecoveryFunc()==False:
     return False
 
@@ -444,7 +451,7 @@ def fixPartFunc():
     resp, rc = executeLog("chmod go-w "+imgId+"Ramdisk/default.prop")
     log("    fixed "+partName+" default.prop:\n"+prefix('__', '\n'.join(pp)))
   except IOError as err:
-    logp("  !! Can't find: "+fn+" in "+os.getcwd())
+    logp("  !! Can't find: "+fn+" in "+os.getcwd()+"\n  !! Rerun the 'fixPart' objective.")
     return False
 
   # Add symlink to /ssm
@@ -582,7 +589,7 @@ def installAppsFunc():
     doInstall = True
     instDt, instTm, instSz = remoteFileDtTm("/data/app/"+appTag+"*", appTag)
     if instDt != None:
-      logp("    installed copy of "+id+": "+instDt+" "+instTm+"  size: "+str(instSz))
+      logp("    installed copy of "+id+":   "+instDt+" "+instTm+"  size: "+str(instSz))
       # Is the installed apk, instDt the same or new?
       if newDt<=instDt and newSz==instSz:
         logp("    (Installed version of "+id+" is good, skipping install. (new "
@@ -755,7 +762,7 @@ def startPhoneFunc():
 
 
 def manualFunc():
-  logp("\n Enter python commands on console...\n")
+  logp("\n Enter python commands on console...  (Ignore stuff about 'hndExcept' and 'exception')\n")
   try:
     hndExcept()
     return True
