@@ -340,13 +340,13 @@ def backupPartFunc():
   Other partitions are backedup to rmcXXXX.img.
   '''
 
-  # First verify that the adb connection is in root mode
+  if replaceRecoveryFunc()==False:
+    return False
+
+  # Verify that the adb connection is in root mode
   resp, rc = executeLog("adb shell id")
   if resp.find("(root)")==-1:
     logp("!! adb is not in 'root' mode, can't continue")
-    return False
-
-  if replaceRecoveryFunc()==False:
     return False
 
   partName = arg.part  # Get name of partition to backup, defaults to 'boot'
@@ -502,17 +502,23 @@ def flashPartFunc():
   # If flashPart was not explicitly called, test to see if it has been done
   if target != "flashPart":
     # Check timestamp of rmcBoot.img with copy stored in /cache/boot.versionDate
-    imgDt, imgTm, imgSz = fileDtTm(imgFn)  # Get timestamp of the local boot.img
-    print("    local "+imgFn+" timestamp: "+imgDt+' '+imgTm+' '+str(imgSz))
-    resp, rc = execute("adb pull /cache/"+partName+".versionDate .")
-    vDate = readFile(partName+".versionDate").split(' ')
-    instDt, instTm, instSz = vDate
-    print("    remote "+partName+".versionDate timestamp: "+instDt+' '+instTm+' '+str(instSz))
+    if os.path.isfile(imgFn):
+      imgDt, imgTm, imgSz = fileDtTm(imgFn)  # Get timestamp of the local boot.img
+      print("    local "+imgFn+" timestamp: "+imgDt+' '+imgTm+' '+str(imgSz))
+      resp, rc = execute("adb pull /cache/"+partName+".versionDate .")
+      try:
+        vDate = readFile(partName+".versionDate").split(' ')
+        instDt, instTm, instSz = vDate
+        print("    remote "+partName+".versionDate timestamp: "+instDt+' '+instTm+' '+str(instSz))
 
-    if imgDt==instDt and imgTm==instTm:
-      logp("    ("+imgFn+" timestamp matches installed versionDate, skipping flash of "
-        +partName+")")
-      return True
+        if imgDt==instDt and imgTm==instTm:
+          logp("    ("+imgFn+" timestamp matches installed versionDate, skipping flash of "
+            +partName+")")
+          return True
+      except:
+        pass  # parname.versionDate file won't exist before recovery was installed, okay.
+    else:
+      pass  # rmcBoot.img doesn't exist, backupPar and fixPart etc need to be run...
 
   # If the partition image file doesn't exist, run the fixPartFunc
   if os.path.isfile(imgFn)==False and partName[:4]=='boot':
