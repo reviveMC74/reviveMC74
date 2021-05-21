@@ -325,6 +325,7 @@ def replaceRecoveryFunc():
 
     print("    --Rebooting")
     resp, rc = executeLog("fastboot reboot")
+    bootWaitLoop("adb")  # Wait for reboot to finish before letting backupPartFunc continue
 
   state.replaceRecovery = True
   return True
@@ -346,7 +347,7 @@ def backupPartFunc():
   # Verify that the adb connection is in root mode
   resp, rc = executeLog("adb shell id")
   if resp.find("(root)")==-1:
-    logp("!! adb is not in 'root' mode, can't continue")
+    logp("!! MC74 adbd is not in 'root' mode, can't continue")
     return False
 
   partName = arg.part  # Get name of partition to backup, defaults to 'boot'
@@ -722,27 +723,33 @@ def adbModeFunc(targetMode="adb"):
     return False
     
   if currentMode!=targetMode:
-    cmd = "fastboot" if targetMode=="fastboot" else "adb"
-    print("  --loop running '"+cmd+" devices' until we see a device")
-    searchStr = "\trecovery" if targetMode=='adb' else "\tfastboot"
-    if targetMode == "normal":   searchStr = "\tdevice"
-    
-    for ii in range(0, 12):
-      resp, rc = executeLog(cmd+" devices")
-      ln = findLine(resp, searchStr)
-      if ln:
-        state.serialNo = ln.split('\t')[0]
-        print("      found device with serial number: "+state.serialNo)
-        state.adbMode = targetMode
-        return True
-        
-      print("--Waiting for reboot "+str(12-ii)+"/12: "+resp.replace('\n', ' '))
-      time.sleep(5)
-    state.adbMode = "unknown"
-    return False
+    return bootWaitLoop(targetMode)  # Loop waiting for the MC74 to finish booting
     
   state.adbMode = targetMode
   return True
+
+
+def bootWaitLoop(tMode):
+  '''Loop for a while waiting for the MC74 to finish booting into fastboot or adb mode
+  '''
+  cmd = "fastboot" if tMode=="fastboot" else "adb"
+  print("  --loop running '"+cmd+" devices' until we see a device")
+  searchStr = "\trecovery" if tMode=='adb' else "\tfastboot"
+  if tMode == "normal":   searchStr = "\tdevice"
+
+  for ii in range(0, 12):
+    resp, rc = executeLog(cmd+" devices")
+    ln = findLine(resp, searchStr)
+    if ln:
+      state.serialNo = ln.split('\t')[0]
+      print("      found device with serial number: "+state.serialNo)
+      state.adbMode = tMode
+      return True
+
+    print("--Waiting for reboot "+str(12-ii)+"/12: "+resp.replace('\n', ' '))
+    time.sleep(5)
+  state.adbMode = "unknown"
+  return False
 
 
 def resetBFFFunc():
