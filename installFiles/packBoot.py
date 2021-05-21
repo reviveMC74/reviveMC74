@@ -46,6 +46,24 @@ def unpack(biFn):
   print("ls-unpack "+os.getcwd()+":\n"+prefix("--|", '\n'.join(listDir('.',
     False))))
 
+  # On linux, unpackbootimg may return a ramdisk file, rather than ramdisk.gz
+  if os.path.isfile("ramdisk.gz")==False:
+    if os.path.isfile("ramdisk"):
+      shutil.move("ramdisk", "ramdisk.gz")
+      print("  renamed 'ramdisk' to 'ramdisk.gz'")
+    else:
+      print("!!No ramdisk file found after unpackbootimg.")
+      return
+
+  # Also, on linux (version of) unpackbootimg, it seems to use the filename
+  # 'kernel' rather than 'zImage', rename to 'zImage'
+  if os.path.isfile("zImage")==False:
+    if os.path.isfile("kernel"):
+      shutil.move("kernel", "zImage")
+    else:
+      print("!!No kernel/zImage file after unpackbootimg.")
+      return
+
   resp, rc = execute("gunzip ramdisk.gz")
   print("gunzip ramdisk.gz: "+str(rc)+"\n"+resp)
   rd = readFile("ramdisk", ascii=False)

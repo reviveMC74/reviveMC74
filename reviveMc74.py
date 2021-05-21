@@ -565,7 +565,7 @@ def installAppsFunc():
 
   # Uninstall apps.  Ignore errors where the file to remove is already not there.
   resp, rc = executeLog("adb shell rm /system/app/DroidNode.apk", ignore="No such file")
-  resp, rc = executeLog("adb shell rm /systemls/app/DroidNodeSystemSvcs.apk", ignore="No such file")
+  resp, rc = executeLog("adb shell rm /system/app/DroidNodeSystemSvcs.apk", ignore="No such file")
   resp, rc = executeLog("adb uninstall ribo.audtest", ignore="Failure")
   resp, rc = executeLog("adb uninstall package:com.meraki.dialer2", ignore="Failure")
   resp, rc = executeLog("adb shell rm /data/app/com.meraki.dialer2-2.apk", ignore="No such file")
@@ -580,7 +580,7 @@ def installAppsFunc():
       resp, rc = executeLog("adb shell "+instFl[2]+" "+instFl[1]+'/'+instFl[0])
 
   # Replace click with sockSvr to disable Mtunnel, first save a backup
-  resp, rc = execute("adb ls /system/bin/clickOrig")
+  resp, rc = execute("adb shell ls /system/bin/clickOrig")
   if resp.find("No such file")>0:
     resp, rc = executeLog("adb shell mv /system/bin/click /system/bin/clickOrig")
   resp, rc = executeLog("adb shell ln -s /system/bin/sockSvr /system/bin/click", ignore="File exists")

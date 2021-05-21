@@ -51,7 +51,14 @@ _pyidNames = ['__IOBase_closed', '__abstractmethods__', '__adapt__',
   '__subclasshook__', '__tp_del__', '__trunc__', '__warningregistry__']
 
 
-def info(obj=locals(), depth=10, extended=False, sortby='t', indent=0, width=90):
+def inf(obj=locals(), **kwargs):
+  try:
+    info(obj, showMethods=False, **kwargs)
+  except: hndExcept()
+
+
+def info(obj=locals(), depth=10, extended=False, sortby='t', indent=0,
+  width=90, showMethods=True):
   '''info display information about various python objects:
   Obj types:
     module
@@ -87,7 +94,7 @@ def info(obj=locals(), depth=10, extended=False, sortby='t', indent=0, width=90)
       val = eval("obj."+nm)
       dct = "+" if nm in inDict else " "
       typ = str(type(val))
-      if (typ[0:6]=="<type " and typ[-1]=='>'):  # remove <type > from type string
+      if (typ[0:6]=="<type " and typ[-1]=='>'):  # Remove <type> from type string
         typ = typ[6:-1]
       if (typ[0]=="'" and typ[-1]=="'"):  # Remove quotes from type name
         typ = typ[1:-1]
@@ -122,8 +129,9 @@ def info(obj=locals(), depth=10, extended=False, sortby='t', indent=0, width=90)
         oth.append(tup)
 
     _showDict(obj, oth, sortby=sortby, indent=indent, depth=depth, width=width)
-    print("methods:")
-    _showDict(obj, meth, sortby='n', indent=indent, depth=depth, width=width)
+    if showMethods:
+      print("methods:")
+      _showDict(obj, meth, sortby='n', indent=indent, depth=depth, width=width)
 
   if extended:  # Extended info includes info about class
     print("\nclass: %s:" % obj.__class__)
@@ -134,7 +142,7 @@ def info(obj=locals(), depth=10, extended=False, sortby='t', indent=0, width=90)
   print("")
       
 
-def _showDict(obj, keys, indent=0, sortby='t', depth=10, width=90):    
+def _showDict(obj, keys, indent=0, sortby='t', depth=10, width=90):
   # Is the key arg an already resolved tuple list?
   if len(keys)>0 and type(keys[0])==tuple:
     lst = keys
@@ -168,7 +176,7 @@ def _showDict(obj, keys, indent=0, sortby='t', depth=10, width=90):
   if sortby:
     # First sort by name
     lst.sort(key=lambda tup: tup[0])
-    # sort=='t' then sort by type (so type ordering is final
+    # sort=='t' then sort by type (so type ordering is final)
     if sortby[0]=='t':
       lst.sort(key=lambda tup: tup[1])
 
@@ -181,6 +189,7 @@ def _showDict(obj, keys, indent=0, sortby='t', depth=10, width=90):
     
     # Detect duplicate entries (for func_XXX attributes)
     key = str(key)  # Someone used bool True and False as keys
+
     if key[0:5] == "func_":
       nm = "__"+key[5:]+"__"
       if nm in keys and obj.__getattribute__(nm)==obj.__getattribute__(key):
@@ -201,9 +210,13 @@ def _showDict(obj, keys, indent=0, sortby='t', depth=10, width=90):
       valStr = str(val)
       if typ == "str":
         valStr = '"'+valStr.replace("\n", "\\n")+'"'
-      if len(valStr) >= space:
+      if len(valStr) >= space:  # If valStr is too long, trim and add ellipsis
         valStr = valStr[0:space-3]+"..."
       print(_ind(indent)+frag+valStr)
+      
+      if key == "__class__":
+        bases = val.__bases__
+        print(_ind(indent+2)+"__bases__    tuple:    "+str(bases))
   return lst
 
 
@@ -311,6 +324,11 @@ def pr(obj, **args):
   
 def _ind(len):
   return "  "*len
+
+
+def debug():
+  import pdb
+  pdb.set_trace()
 
 
 def writeObj(obj, fid):
