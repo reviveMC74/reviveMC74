@@ -79,7 +79,7 @@ arg = bunch(  # Place to store args for objective funcs to use
 
 
 def reviveMain(args):
-  global target, arg
+  global target, arg, installFilesDir
 
   if type(args)==str:
     args = args.split(' ')
@@ -125,7 +125,17 @@ def reviveMain(args):
     return
 
   # Verify that the needed programs and files are/were present
-  if os.path.isfile(filesPresentFid)==False:
+  # if installedFilesDir is not local to the current directory, find it (only for developers)
+  if os.path.isdir(installFilesDir) == False:  # Does installFilesDir exist here?
+    installFilesDir = os.environ.get("HOME")+"/git/reviveMC74/installFiles"
+    if os.path.isdir(installFilesDir) == False:
+      installFilesDir = "/git/reviveMC74/installFiles"
+      if os.path.isdir(installFilesDir) == False:
+        print("Can't find installation files dir")
+        print("  Did you do: git clone https://github.com/reviveMC74/reviveMC74.git")
+        return False
+
+  if os.path.isfile(filesPresentFid) == False:
     if checkFilesFunc():
       writeFile(filesPresentFid, "ok")
     else:
@@ -307,6 +317,9 @@ def replaceRecoveryFunc():
     logp("--replaceRecovery partition")
     logp("  --Writng revovery partition image:  "+neededFiles.recoveryClockImg)
     resp, rc = executeLog("fastboot flash recovery "+installFilesDir+"/"+neededFiles.recoveryClockImg)
+    # IF this hangs on Linux, the problem may be that 'fastboot devices'
+    # returns 'no permissions  fastboot', meaning that the user needs to be root to write to 
+    # the USB device.    Try doing the fastboot commands as root, ie with sudo?
 
     print('''
     The recovery partition has been updated; the MC74 is going to reboot now.
