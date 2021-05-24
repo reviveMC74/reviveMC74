@@ -140,11 +140,13 @@ def pack(biFn):
   # Build file system image file
   cmdline = removeCRLF(readFile("cmdline"))
   base = removeCRLF(readFile("base"))
+  if base[:2]!= '0x':
+    base = '0x'+base
   pagesize = removeCRLF(readFile("pagesize"))
   ts = datetime.now().strftime("%y%m%d%H%M")
   cmd = ["mkbootimg", "--kernel", "zImage",
     "--ramdisk", "ramdisk.gz", "--cmdline", cmdline,
-    "--base", "0x"+base, "--pagesize", pagesize, "--output", "../"+biFn+ts ]
+    "--base", base, "--pagesize", pagesize, "--output", "../"+biFn+ts ]
   # Note: --cmdline contains spaces, we must pass the command as tokens so
   # execute() won't .split(' ') the command to prepare the args array
   print("cmd: '"+str(cmd)+"'")

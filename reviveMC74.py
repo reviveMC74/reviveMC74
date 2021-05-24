@@ -515,14 +515,15 @@ def flashPartFunc():
 
   # If flashPart was not explicitly called, test to see if it has been done
   if target != "flashPart":
-    # Check timestamp of rmcBoot.img with copy stored in /cache/boot.versionDate
+    # Check timestamp of rmcBoot.img with copy stored in /data/boot.versionDate
     if os.path.isfile(imgFn):
       imgDt, imgTm, imgSz = fileDtTm(imgFn)  # Get timestamp of the local boot.img
       print("    local "+imgFn+" timestamp: "+imgDt+' '+imgTm+' '+str(imgSz))
-      resp, rc = execute("adb pull /cache/"+partName+".versionDate .")
+      resp, rc = executeLog("adb shell mount /data")
+      resp, rc = execute("adb pull /data/"+partName+".versionDate .")
       try:
         vDate = readFile(partName+".versionDate").split(' ')
-        instDt, instTm, instSz = vDate
+        instDt, instTm, instSz = vDate[:3]
         print("    remote "+partName+".versionDate timestamp: "+instDt+' '+instTm+' '+str(instSz))
 
         if imgDt==instDt and imgTm==instTm:
@@ -562,8 +563,14 @@ def flashPartFunc():
 
   # Record timestamp and size of partition image file to allow for flashPart verification above
   partDate = fileDtTm(imgFn) 
-  partDate = partDate[0]+' '+partDate[1]+' '+str(partDate[2])
-  resp, rc = executeLog("adb shell echo '"+partDate+"' > /cache/"+partName+".versionDate")
+  md5 = execute('md5 '+imgFn)[0].split()[0][:8]  # record part of the md5sum of the file
+  partDate = partDate[0]+' '+partDate[1]+' '+str(partDate[2])+' '+imgFn+" "+md5
+  resp, rc = executeLog("adb shell mount /data")
+  print("mount /data: %d %s" % (rc, resp))
+  resp, rc = executeLog("adb shell echo '"+partDate+"' > /data/"+partName+".versionDate")
+  print("echo versiobDate: %d %s" % (rc, resp))
+  resp, rc = executeLog("adb shell ls -l /data")
+  print("ls /data: %d %s" % (rc, resp))
 
   return True
   
