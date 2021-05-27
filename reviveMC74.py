@@ -569,8 +569,8 @@ def flashPartFunc():
   print("mount /data: %d %s" % (rc, resp))
   resp, rc = executeLog("adb shell echo '"+partDate+"' > /data/"+partName+".versionDate")
   print("echo versiobDate: %d %s" % (rc, resp))
-  resp, rc = executeLog("adb shell ls -l /data")
-  print("ls /data: %d %s" % (rc, resp))
+  resp, rc = executeLog("adb shell cat /data"+partName+".versionDate")
+  print("versionDate readback: %d %s" % (rc, resp))
 
   return True
   
