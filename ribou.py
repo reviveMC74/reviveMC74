@@ -375,18 +375,19 @@ def execute(cmd, showErr=True, returnStr=True):
   proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   out, err = proc.communicate()
   if type(out)==bytes:  # Needed for python 3 (stupid python)
-    out = out.decode()
+    out = out.decode("ISO-8859-1")
     try:
-      err = err.decode()
+      err = err.decode("ISO-8859-1")
     except Exception as ex: 
       err = "!!--"+str(type(ex))+"--!!"
   
   if showErr and len(err)>0:
     out += err
-  if returnStr and str(type(out))=="<type 'unicode'>":
+  if returnStr and type(out)==unicode:
     # Trying to make 'out' be an ASCII string whether in py2 or py3, sigh.
     try:
-      out = out.encode()    # Convert UNICODE (u'xxx') to string
+      out = out.encode("ISO-8859-1")    # Convert UNICODE (u'xxx') to string
+      # on 2.7, out was a unicode, encode makes it a string, ISO-8859-1 handles chars > 0x80
     except: 
       out = out.decode("utf-8")  # Needed for python3   bytes->str
   return out, proc.returncode
@@ -412,6 +413,9 @@ class bunch(dict):  # Object that allows attributes to be added freely
   def __init__(self, **kwds):
     dict.__init__(self, kwds)
     self.__dict__ = self
+# Sample bunches for testing:
+bname = bunch(todd="Allen", ryan="Baker", adam="Carpenter")
+bcity = bunch(ny="Poughkeepsie", me="Bangor", ct="Windsor")
 
 
 def readFile(fid, ascii=True):

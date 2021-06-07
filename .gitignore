@@ -8,3 +8,4 @@ rmcBoot*
 uBootEnv
 version.info
 *.versionDate
+installFiles/extra

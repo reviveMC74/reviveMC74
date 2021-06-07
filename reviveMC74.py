@@ -16,8 +16,8 @@ the Meraki apps and to install reviveMC74.apk
 
 import sys, os, time, datetime, shutil
 from ribou import *
+from examImg import * # Utilities for reviveMC74
 
-logFid = "reviveMC74.log"
 installFilesDir = "installFiles"
 filesPresentFid = "filesPresent.flag"
   # If this file exists, we checked that needed files are here
@@ -46,33 +46,36 @@ installFiles = bunch(
   pp = ["pp", "/system/bin", "chmod 755"]
 )
 
+installFilesExtra = bunch(
+  EXTRAmc74local = ["MC74local.mp", "/ssm/store", "chmod 664"],
+  EXTRAldb = ["ldb", "/system/bin", "chmod 755"],
+  EXTRArelaunch = ["relaunch", "/system/bin", "chmod 755"]
+)
+
 installApps = bunch(
   launcher = ["com.teslacoilsw.launcher-4.1.0-41000-minAPI16.apk", "com.teslacoilsw.launcher"],
   ssm = ["revive.SSMService-debug.apk", "ribo.ssm"],
   reviveMC74 = ["revive.MC74-debug.apk", "revive.MC74"]
 )
 
-updateFiles = '''
-copy /y \andrStud\SSMservice\app\build\outputs\apk\debug\revive.SSMService-debug.apk \git\reviveMC74\installFiles
-copy /y \git\MC74\app\build\outputs\apk\debug\revive.MC74-debug.apk \git\reviveMC74\installFiles
-
-copy /y \andrStud\hex\app\.cxx\cmake\debug\armeabi-v7a\hex \git\reviveMC74\installFiles
-copy /y \andrStud\hex\app\.cxx\cmake\debug\armeabi-v7a\lights \git\reviveMC74\installFiles
-copy /y \andrStud\hex\app\.cxx\cmake\debug\armeabi-v7a\sockSvr \git\reviveMC74\installFiles
-copy /y \andrStud\hex\app\.cxx\cmake\debug\armeabi-v7a\sendevent \git\reviveMC74\installFiles
-''' 
+installAppsExtra = bunch(
+  EXTRAdolphin = ["Dolphin-12.2.3.apk", "mobi.mgeek.TunnyBrowser"],
+  EXTRAmagicEarth = ["com.generalmagic.magicearth_7.1.21.19.54A366E7.0648D6B8-2021051206_minAPI16(armeabi-v7a)(nodpi)_apkmirror.com.apk", "com.generalmagic.magicearth"],
+  EXTRAvoiceRecorder = ["com.coffeebeanventures.easyvoicerecorder_2.4.1-11049_minAPI16(nodpi)_apkmirror.com.apk", "com.coffeebeanventures.easyvoicerecorder"]
+)
 
 
 options = bunch(
   #sendOid=[None, 'o:', 'Name of object to send as body of command'],
   #sessionMode = [False, 's', 'Loop reading commands from stdin'],
-  #debug = [False, 'd', 'Pause for debug after cmdeply returns'],
+  extra = [False, 'x', 'Install extra apps/files'],  # Private, not for general use
   help = [False, '?', 'Print help info']
 )
 
 arg = bunch(  # Place to store args for objective funcs to use
   part = "both",  # Target partition to backup or fix/install, ie 'boot', 'both' or 'boot2'
 )
+sys.arg = arg  # Make it universal (not just global (to reviveMC74)) so examImg.executeAdb sees it
 # Options:
 #   part  -- specify which parition to read or write(flash) data to
 #   img   -- full filename of disk image to write/flash in flashPart objective
@@ -88,6 +91,7 @@ def reviveMain(args):
       break;  # Not an option, remaining tokens are args
     tok = args.pop(0)[1:]  # Get the first token, remove the leading '-'
     while len(tok)>0:
+      tokLen = len(tok)  # See if option is processed and option letter removed
       for nn, vv in options.items():
         if vv[1][0]==tok[0]:  # Does this option def match this option letter?
           if len(vv[1])>1 and vv[1][1]==':':  # Is an value token expected?
@@ -99,6 +103,9 @@ def reviveMain(args):
             tok = tok[1:]  # Consume this option letter
             vv[0] = True
           break
+      if len(tok) == tokLen:
+        print("Unrecognized option letter '"+tok[0]+"', ('"+tok+"')")
+        return
 
   if options.help[0]:  # If the -? option was given, display help info
     print(__doc__)
@@ -124,10 +131,21 @@ def reviveMain(args):
     listObjectivesFunc()
     return
 
+  # Connect to the requested host if needed (device must be rooted/revived first)
+  if 'host' in arg:
+    resp, rc = executeAdb("shell getprop ro.serialno")
+    if resp.find("error:") == 0:  # Resp probably: "error: device 'xxx:5555' not found\r\n"
+      if arg.host.find(':') == -1: arg.host += ":5555"
+      resp, rc = execute("adb connect "+arg.host)
+      logp("  connecting to "+arg.host+": "+resp)
+
   # Verify that the needed programs and files are/were present
   # if installedFilesDir is not local to the current directory, find it (only for developers)
   if os.path.isdir(installFilesDir) == False:  # Does installFilesDir exist here?
-    installFilesDir = os.environ.get("HOME")+"/git/reviveMC74/installFiles"
+    uid = os.environ.get("SUDO_USER") 
+    if uid == None: uid = os.environ.get("USER")
+    if uid == None: uid = "dummy"  # uid is usually set for Linux
+    installFilesDir = "/home/"+uid+"/git/reviveMC74/installFiles"
     if os.path.isdir(installFilesDir) == False:
       installFilesDir = "/git/reviveMC74/installFiles"
       if os.path.isdir(installFilesDir) == False:
@@ -218,57 +236,6 @@ def chkFile(fid):
     return False
 
 
-def findLine(data, searchStr):
-  for line in data.split('\n'):
-    if searchStr in line:
-      return line
-
-
-def executeLog(cmd, showErr=True, ignore=None):
-  '''Execute an operating system command and log the command and response'''
-  print("    Executing: '"+str(cmd)+"'")
-  ret = execute(cmd, showErr)
-  resp = "    '"+str(cmd)+"'  (rc="+str(ret[1])+")\n"+prefix('      |', ret[0])
-  if ignore and ret[0].find(ignore)!=-1:  # Does the response contain the string to ignore
-    log(resp)  # This error response is okay, don't print to console
-    # Usually done with a command which is okay to fail, like erasing a file that is not there.
-  else :
-    logp(resp)
-  return ret
-
-
-def log(msg, prefix=""):
-  fp = open(logFid, 'ab')
-  if prefix:
-    fp.write(str.encode(prefix))  # Usually used to prefix line with a \n LF
-  ts = datetime.datetime.now().strftime("%y/%m/%d-%H:%M:%S")
-  fp.write(str.encode(ts+" "+msg+'\n'))
-  fp.close()
-
-
-def logp(msg, prefix=""):
-  print(prefix+msg)
-  log(msg, prefix=prefix)
-
-
-def prefix(prefix, msg):
-  if len(msg)==0:  return msg
-  msg = msg[:-1] if msg[-1]=='\n' else msg
-  return prefix+('\n'+prefix).join(msg.split('\n'))
-
-
-def listDir(dir, recursive=True, search=''):
-  # Replacement for 'find . -print' on Windows
-  lst = []
-  for fn in os.listdir(dir):
-    subdir = dir+'/'+fn
-    if search in subdir: 
-      lst.append(subdir)
-    if recursive and os.path.isdir(subdir):
-      lst.extend(listDir(subdir))
-  return lst
-
-
 # FUNCTIONS FOR CARRYING OUT OBJECTIVES ----------------------------------------
 def reviveFunc():
   logp("--(reviveFunc)") 
@@ -311,10 +278,25 @@ def replaceRecoveryFunc():
     # The recovery partition has not been replaced, do it now
     # Switch to fastboot mode
     if state.adbMode != 'fastboot':
-      if adbModeFunc("fastboot")==False: 
+      if adbModeFunc("fastboot")==False:
+
+        print("\nFailed to get into 'fastboot' mode.\n")   
+        if os.name=="nt":
+          print('''Either this command prompt is not running as 'administrator',
+          or you need to change the device driver for the 'fastboot device', see:
+          https://github.com/reviveMC74/reviveMC74/blob/main/doc/fastbootDrivers.md''')
+        else:
+          print('''Please rerun this as superuser.  For some reason, the 'fastboot flash recovery...'
+          command needs to be run as root.''')
+
         return False
 
     logp("--replaceRecovery partition")
+
+    if state.serialNo == "no permissions":
+      logp("You must be in superuser mode (root) on Linux to flash a partition in 'fastboot'")
+      return False
+
     logp("  --Writng revovery partition image:  "+neededFiles.recoveryClockImg)
     resp, rc = executeLog("fastboot flash recovery "+installFilesDir+"/"+neededFiles.recoveryClockImg)
     # IF this hangs on Linux, the problem may be that 'fastboot devices'
@@ -567,10 +549,15 @@ def flashPartFunc():
   partDate = partDate[0]+' '+partDate[1]+' '+str(partDate[2])+' '+imgFn+" "+md5
   resp, rc = executeLog("adb shell mount /data")
   print("mount /data: %d %s" % (rc, resp))
-  resp, rc = executeLog("adb shell echo '"+partDate+"' > /data/"+partName+".versionDate")
+  resp, rc = executeLog("adb shell echo "+partDate+" > /data/"+partName+".versionDate")
   print("echo versiobDate: %d %s" % (rc, resp))
-  resp, rc = executeLog("adb shell cat /data"+partName+".versionDate")
+  resp, rc = executeLog("adb shell cat /data/"+partName+".versionDate")
   print("versionDate readback: %d %s" % (rc, resp))
+  # Cause adbd to be started (as root) when it boots in normal mode
+  resp, rc = executeLog("adb shell echo -n 1 >/data/property/persist.meraki.usb_debug")
+  logp("setting perist.meraki.usb_debug: %d %s" % (rc, resp))
+  resp, rc = executeLog("adb shell sync")
+  resp, rc = executeLog("adb shell umount /data")
 
   return True
   
@@ -579,8 +566,11 @@ def installAppsFunc():
   if adbModeFunc("normal")==False:  # Get into normal operation
     return False
 
-  # TTD: add /ssm symlink, disable tunnel, change telsacoilsw launcher DB
-
+  # TTD:  change telsacoilsw launcher DB
+  if options.extra[0]:  # Was the -e option specified 
+    # Add the extra files and apps to the install lists
+    installFiles.update(installFilesExtra)
+    installApps.update(installAppsExtra)
 
   logp("installAppsFunc, uninstall dialer2, droidNode, droidNodeSystemSvc, if not already done")
 
@@ -595,7 +585,11 @@ def installAppsFunc():
   for id in installFiles:
     print("  --install file/program: "+id)
     instFl = installFiles[id]
-    resp, rc = executeLog("adb push "+installFilesDir+"/"+instFl[0] 
+    isExtra = id[0:5] == "EXTRA"
+    dir = installFilesDir
+    if isExtra:  # If this is an extra file, read it from the .../extra dir
+      dir += "/extra"
+    resp, rc = executeLog("adb push "+dir+"/"+instFl[0] 
       +" "+instFl[1]+'/'+instFl[0]) 
     if len(instFl)>2:  # If there is a fixup cmd, do it (usually chmod)
       resp, rc = executeLog("adb shell "+instFl[2]+" "+instFl[1]+'/'+instFl[0])
@@ -610,7 +604,13 @@ def installAppsFunc():
   for id in installApps:
     fid = installApps[id][0]
     appTag = installApps[id][1]
-    newDt, newTm, newSz = fileDtTm(installFilesDir+"/"+fid)
+
+    isExtra = id[0:5] == "EXTRA"
+    dir = installFilesDir
+    if isExtra:  # If this is an extra file, read it from the .../extra dir
+      dir += "/extra"
+
+    newDt, newTm, newSz = fileDtTm(dir+"/"+fid)
 
     # If app is already installed see if we have a newer version
     doInstall = True
@@ -625,12 +625,30 @@ def installAppsFunc():
      
     if doInstall:
       logp("  --installing app: "+id+"     ("+newDt+' '+newTm+' '+str(newSz)+")")
-      resp, rc = executeLog("adb install -t -r "+installFilesDir+"/"+fid)
+      resp, rc = executeLog("adb install -t -r "+dir+"/"+fid)
   
+
   # Make the shell prompt something short
   resp, rc = execute("adb shell rm /sdcard/SHELL_PROMPT")  # File is used by /system/etc/mkshrc
   resp, rc = execute("adb shell touch /sdcard/SHELL_PROMPT")
 
+
+  if options.extra[0]:  # Do extra install stuff (not for general users)
+    print("(do extra install ops)")
+    # Set register refresh interval to 10 min
+    # 
+
+  # Change the Nova Launcher favorites db to make Phone connect to reviveMC74 and add icons
+  initLauncher()
+
+
+  # Record the eth0 mac address
+  # 'ip addr | grep \ eth0:' look like:
+  # 3: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 512
+  #     link/ether e0:55:3d:50:56:10 brd ff:ff:ff:ff:ff:ff
+  resp, rc = execute("adb shell ip addr |grep -A1 \ eth0: | grep ether")
+  state.mac = resp.strip().split(' ')[1]
+  print("  (mac "+state.mac+")");
   
   state.installApps = True
   return True
@@ -682,13 +700,15 @@ def adbModeFunc(targetMode="adb"):
     if ln:
       currentMode = "fastboot"
       state.serialNo = ln.split('\t')[0]
+      # Note: state.serialNo may be 'no permissions' if in Linux and not root!
       if targetMode=="fastboot":  # We are in fastboot, and that is the target mode
         state.adbMode = "fastboot"
         return True
       isFastboot = True
   
   logp("  --adbModeFunc, currentMode: "+currentMode+", targetMode: "+targetMode
-    +(" adb" if isAdb else "")+(" normal" if isNormal else "")+(" fastboot" if isFastboot else ""))
+    +(" adb" if isAdb else "")+(" normal" if isNormal else "")
+    +(" fastboot" if isFastboot else ""))
   
   if currentMode == targetMode:
     pass  # Nothing to change
@@ -709,15 +729,14 @@ def adbModeFunc(targetMode="adb"):
       -- Reconnect the USB cable to the right side(not back) connector of the MC74
         (and the other end to the development computer)
     
-    Then, be ready to do this after you press enter:
+    Now...
       -- Apply power with POE ethernet cable to WAN port (the ethernet port closest to the round
         socket on the back of the MC74.)
       -- quickly, press and hold mute button, before backlight flashes
       -- keep mute button down until cisco/meraki logo appears and vibrator grunts.
       -- release mute
+      -- Press enter on the computer keyboard.
       -- (in about 15 sec, Windows should make the  'usb device attached' sound.)
-    
-    Press enter when ready to power up the MC74.
     ''')
     try:
       resp = input()
@@ -791,6 +810,12 @@ def startPhoneFunc():
   resp, rc = executeLog("adb shell am force-stop com.meraki.droidnode")
   resp, rc = executeLog("adb shell am force-stop com.meraki.dialer2")
   resp, rc = executeLog("adb shell am force-stop com.meraki.dialer2:pjsip")
+
+  msg = ""
+  if "serialNo" in state: msg = "sn "+state.serialNo
+  if "mac" in state: msg += "  mac "+state.mac
+  if len(msg) > 0:
+    print("  ("+msg+")");
   return True
 
 
@@ -880,103 +905,55 @@ def versionFunc():
   return True
 
 
-def editFile(fid, find="<editMe>", replace=None, insert=None, delete=None):
-  '''Simple edit of a file.  Find first line containing 'find' string, then 'insert' a line
-    lines, and/or 'replace' the line we found, or delete the line found, then write back to
-    (local) disk.
-  '''
-  logp("  -- editFile "+fid+" find '"+find+"'")
-  try:
-    body = readFile(fid)
-    
-    # other fixes (not implemented yet)
-    #print("  (UIF create sym link from /ssm to /sdcard/ssm)");
-    
-    lines = body.split('\n')
-    pp = []
-    for lnNo in range(0, len(lines)):
-      ln = lines[lnNo]  # Get lines by index number so we can inspect/insert/delete future lines
-      if ln[-1:]=='\r':  ln = ln[:-1]  # Remove \r from \r\n on windows systems
-      if find and ln.find(find)!=-1:  # Does this line contain the content we need to find?
-        find = None  # Remove the 'find' string now that we found it
-        if replace:  # If the line is to be replaced, replace it, otherwise add it
-          pp.append(replace)
-        elif not delete:
-          pp.append(ln)  # Keep this line, others may be inserted next
-        
-        if insert:  # Insert a list of lines, or just one line
-          # Avoid creating duplicate inserts if fixPart is run multiple times
-          firstInsert = insert if type(insert)==str else insert[0]
-          print("    firstInsert '"+firstInsert+"'")
-          print("    next line   '"+lines[lnNo+1]+"' ("+str(len(lines)>lnNo+1)
-            +" "+str(len(lines)>lnNo+1 and lines[lnNo+1]!=firstInsert)+")")
-          if len(lines)>lnNo+1 and lines[lnNo+1]!=firstInsert:
-            if type(insert)==list:
-              for il in insert:
-                pp.append(il)
-            else:
-              pp.append(insert)
-          else:
-            logp("  (ignoring duplicate insertion edit request for: '"+firstInsert+"'")
-      else:
-        pp.append(ln)  # This is not the line you are looking for, just copy the file
-        
-    if find:
-      logp("  !! Failed to find '"+find+"' in "+fid)
-    writeFile(fid, '\n'.join(pp))
-    
-  except IOError as err:
-    logp("  !! Can't find: "+fid+" in "+os.getcwd())
-    return False
+def pushFunc():
+  '''Update the GIT reviveMC74 repository with the latest code.  This is not for use by 
+  general users.'''
 
+  # ssmJarAndr.bat
+  # Copy SSM objects to SSM asset/store
+  updateObjs = ['ANDRCONFIG', 'WEATHER', 'VOIP', 'VOIPSETTINGS', 'LOGPANEL', 'SMSPANEL' ] 
+  for oid in updateObjs:
+    shutil.copy2("/ssm/store/"+oid+".nob", "/andrStud/SSMservice/app/src/main/assets/store")
+    # Note: copy2 preserves/copies the contents and file date and permissions etc
 
-def getDateTime(iList, fn):
-  resp, rc = executeLog("adb shell ls -l "+fn)
-  if rc==0:
-    lines = linesToList(resp)
-    for ln in lines:
-      if len(ln)>2 and ln[0:2]=='__':  # Ignore '__bionic_open_tzdata...' error lines
-        continue
-      iList.append(fn+":\t"+ln)
-    
+  # Change 'freshDate' in SSMservice.java
+  dt = datetime.datetime.now().strftime("%y/%m/%d")
+  newFD = '  public static String freshDate = "'+dt+'-00:00:00";'
+  editFile('/andrStud/SSMservice/app/src/main/java/ribo/ssm/SSMservice.java', find="String freshDate =",
+    replace=newFD)
 
-def fileDtTm(fid):
-  try:
-    dt = os.path.getmtime(fid)
-    ts = datetime.datetime.fromtimestamp(dt).strftime('%Y-%m-%d %H:%M:%S')
-    sz = os.path.getsize(fid)
-    dt, tm = ts.split(' ')
-    return [dt, tm, sz]
-  except Exception as ex:
-    logp("    ("+ex.strerror+", local file: "+fid+")")
-  return ["(noDate)", "(noTime)", 0]
+  # Rebuild SSMservice and reviveMC74 .apks
+  print("Rebuild the SSMservice and reviveMC74 .apks; then press enter.")
+  try: 
+    resp = input()  # Wait for user to rebuild .apks
+  except: 
+    pass
 
+  os.chdir("/git/reviveMC74")
+  updateFiles = [
+    '/andrStud/SSMservice/app/build/outputs/apk/debug/revive.SSMService-debug.apk',
+    '/git/MC74/app/build/outputs/apk/debug/revive.MC74-debug.apk',
+    '/andrStud/hex/app/.cxx/cmake/debug/armeabi-v7a/hex',
+    '/andrStud/hex/app/.cxx/cmake/debug/armeabi-v7a/lights',
+    '/andrStud/hex/app/.cxx/cmake/debug/armeabi-v7a/sockSvr',
+    '/andrStud/hex/app/.cxx/cmake/debug/armeabi-v7a/sendevent'
+  ]
+  for fid in updateFiles:
+    shutil.copy2(fid, "installFiles")
 
-def remoteFileDtTm(fid, tag=None):
-  if tag == None: tag = fid
-  remDtTm = ["(noDate)", "(noTime)", 0]
-  resp, rc = execute("adb shell ls -l "+fid)
-  if rc==0:
-    for ln in resp.split('\n'):
-      if ln.find(tag)>0:  # If this line of ls -l is the one for this file...
-        if ln.find("No such") != -1:
-          logp("    (remoteFile"+fid+" present ("+tag+"))")
-          break
-        sz, dt, tm, fn = ln.split(' ')[-4:]
-        remDtTm = [dt, tm, int(sz)]
-  return remDtTm
+  resp, rc = execute('git status')
+  print(resp)
+  print("\nUse git add to add any new files to repo?, then press enter")
+  try: 
+    resp = input()  # Let user do any git adds needed
+    import pdb; pdb.set_trace()
+    print("Enter commit message text:")
+    commitMsg = input()  # Let user do any git adds needed
+  except: 
+    pass
 
-
-def linesToList(resp):
-  lines = []
-  for ln in resp.split('\n'):
-    while len(ln)>0 and ln[-1]=='\r':  # Lines through adb/shell have 2 \r's before the \n
-      ln = ln[:-1]
-    ln = ln.strip()
-    if len(ln)==0 or ln[0]=='#':
-      continue  # Skip comments
-    lines.append(ln)
-  return lines
+  resp, rc = execute('git commit -am "'+commitMsg+'"')
+  print("Execute: git push")
 
 
 def listObjectivesFunc():

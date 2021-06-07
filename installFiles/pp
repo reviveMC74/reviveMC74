@@ -1,4 +1,3 @@
-!#/system/bin/sh
 ps | grep ribo
 ps | grep revive
 netstat -ant |grep LIST
