@@ -191,6 +191,17 @@ MC74.mp configuration object:
 
 The 'weather' node described in the Weather Radar page is also used by the Weather Graph page.
 
+### 24 Hour Clock
+
+By default the screenSave clock shows 12 hour time.  To display time in 24 hour format, edit /ssm/store/MClocal.mp and add
+
+    config:
+      screenSaver:
+        24hour:
+        
+ Note that the 'config' node is probably already there, don't duplicate it.  Somewhere below the 'config' node create a
+ new 'screenSaver' node, indented 2 spaces and a '24hour' node indented 2 more spaces, below that.  If you have
+ 'adb shell' access to the phone, you can use 'vi' to edit the /ssm/store/MC74local.mp file.
 
 
 
