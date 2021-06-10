@@ -145,13 +145,13 @@ a binary version of the object is rendered as text.)
 ### Hostname and Launcher App
 
 Some other things can be set (only in MC74local.mp), they are:
-- **hostname: 'phonyPhone'**  You don't usually need to set this, on the MC74 the hostname is set to 'localhost'
-in init.rc files in the boot partition, which is hard to change.  If this node is set, SSM will set the hostname to 
-this value when started.
 - **launcher: 'com.teslacoilsw.launcher/.NovaLauncher'**  The MC74 doesn't have an Android launcher app.  By default reviveMC74 uses the
 NovaLauncher as the launcher.  If you add a 'launcher' node, you can override this default.
 
-
+For installations with many phones, setting the hostname for the MC74 may be useful.  (In the MC74, the hostname is set to the useless,
+'localhost' by instructions in /init.rc files.  These cannot be changed easily because they are in the initial ram disk on the boot partition.
+SSM uses the contents of the /etc/hostname file to set the hostname.  So, set the hostname you want in /etc/hostname and it will be transfered 
+to the active hostname.
 
 
 ### Weather Radar Page
