@@ -452,25 +452,35 @@ def initLauncher():
   print("\nMove Show Apps icon to lower right")
   resp = dbSetCell(ldb, "favorites", "_id", 1, "hotSeatRank", 0)
   print(resp)
-
-  favRow = dbGetRow(ldb, "favorites", "title", "Phone")
-  favRow.update(container=-100, cellY=5.0, screen=1)
+  
+  favRow = bunch(flingAsTap= 'false', itemType= '0', appWidgetId= '-1',
+    zOrder= '0', iconType= '2', container= '-100', spanX= '1.0', spanY= '1.0',
+    cellX= '0.0', cellY= '5.0', screen= '1', flags= '0', profileId= '-1',
+    restored= '0')
+  
+  logp("phone row: "+str(favRow))
+  
+  resp = dbCmd(ldb, "delete from favorites where _id>=12 and _id<=14")
+  print(resp)
   
   print("\nAdd dolphin Browser favorite:")
   dolphComp = "mobi.mgeek.TunnyBrowser/.SplashActivity"
-  favRow.update(_id=12, cellX=0.0, title='Browser', intent=favInt % dolphComp)
+  favRow.update(_id=12, cellX=0.0, title='Browser', intent=favInt % dolphComp, 
+    iconResource="mobi.mgeek.TunnyBrowser/.SplashActivity")
   resp = dbAddRow(ldb, "favorites", favRow)
   print(resp)
   
   print("\nAdd magicEarth/Map favorite:")
   earthComp = "com.generalmagic.magicearth/com.generalmagic.android.map.MapActivity;l.profile=0"
-  favRow.update(_id=13, cellX=1.0, title='Maps', intent=favInt % earthComp)
+  favRow.update(_id=13, cellX=1.0, title='Maps', intent=favInt % earthComp,
+    iconResource="com.generalmagic.magicearth/com.generalmagic.android.map.MapActivity")
   resp = dbAddRow(ldb, "favorites", favRow)
   print(resp)
   
   print("\nAdd riboVideo favorite:")
   VPComp = "ribo.vp/.VPcontrol"
-  favRow.update(_id=14, cellX=2.0, title='riboVideo', intent=favInt % VPComp)
+  favRow.update(_id=14, cellX=2.0, title='riboVideo', intent=favInt % VPComp,
+    iconResource="ribo.vp/.VPcontrol")
   resp = dbAddRow(ldb, "favorites", favRow)
   print(resp)
   
@@ -497,9 +507,30 @@ def btest():
     hndExcept()
 
 
+def sr(rowNo):
+  pr(dbGetRow(ldb, "favorites", "_id", rowNo))
 
+def gr(rowNo):
+  return dbGetRow(ldb, "favorites", "_id", rowNo)
 
-
+def cmpb(ba, bb):
+  baNames = ba.keys();  baNames.sort()
+  bbNames = bb.keys();  bbNames.sort()
+  notInB = []
+  
+  for nm in baNames:
+    try:
+      baV = ba[nm]
+      bbV = bb[nm]
+      if baV != bbV:
+        print(nm+" a: "+baV)
+        print(nm+" b: "+bbV)
+      del bbNames[bbNames.index(nm)]
+    except Exception as ex:
+      notInB.append(nm)
+    
+  for nm in bbNames:
+    print("extra in b, "+nm+": "+str(bb[nm]))
 
 
 
@@ -512,3 +543,4 @@ if __name__ == "__main__":
     examImg(sys.argv[1:])
   except Exception as xx:
     hndExcept()
+

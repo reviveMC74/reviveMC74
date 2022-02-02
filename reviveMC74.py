@@ -14,6 +14,8 @@ a new recovery image, and patching the boot.img to run in not secure mode, unins
 the Meraki apps and to install reviveMC74.apk
 '''
 
+# python reviveMC74.py installApps host=phCom
+
 import sys, os, time, datetime, shutil
 from ribou import *
 from examImg import * # Utilities for reviveMC74
@@ -136,7 +138,7 @@ def reviveMain(args):
     resp, rc = executeAdb("shell getprop ro.serialno")
     if resp.find("error:") == 0:  # Resp probably: "error: device 'xxx:5555' not found\r\n"
       if arg.host.find(':') == -1: arg.host += ":5555"
-      resp, rc = execute("adb connect "+arg.host)
+      resp, rc = execute("adb connect "+arg.host)   # !Do not use executeAdb()
       logp("  connecting to "+arg.host+": "+resp)
 
   # Verify that the needed programs and files are/were present
@@ -267,7 +269,7 @@ def replaceRecoveryFunc():
 
   # Has the recovery partition already been replaced?
   isReplaced = False
-  resp, rc = executeLog("adb shell grep secure default.prop")
+  resp, rc = executeAdbLog("shell grep secure default.prop")
   
   if findLine(resp, "ro.secure=0"):
     # This phone already has had the recovery replaced (ie shell cmd worked)
@@ -340,7 +342,7 @@ def backupPartFunc():
     return False
 
   # Verify that the adb connection is in root mode
-  resp, rc = executeLog("adb shell id")
+  resp, rc = executeAdbLog("shell id")
   if resp.find("(root)")==-1:
     logp("!! MC74 adbd is not in 'root' mode, can't continue")
     return False
@@ -359,9 +361,9 @@ def backupPartFunc():
     imgFn += "Raw"  # Backing up boot produces .imgRaw, fixPartFunc uses this to create .img
 
   logp("backupPart "+partName+" partition: "+partFid)
-  resp, rc = executeLog("adb shell dd if="+partFid+" of=/cache/"+imgFn+" ibs=4096")
-  resp, rc = execute("adb pull /cache/"+imgFn+" .")
-  resp, rc = executeLog("adb shell rm /cache/"+imgFn)
+  resp, rc = executeAdbLog("shell dd if="+partFid+" of=/cache/"+imgFn+" ibs=4096")
+  resp, rc = executeAdb("pull /cache/"+imgFn+" .")
+  resp, rc = executeAdbLog("shell rm /cache/"+imgFn)
 
   if os.path.isfile(imgFn)==False:
     logp("!!Can't find "+imgFn+" after pulling it")
@@ -501,8 +503,8 @@ def flashPartFunc():
     if os.path.isfile(imgFn):
       imgDt, imgTm, imgSz = fileDtTm(imgFn)  # Get timestamp of the local boot.img
       print("    local "+imgFn+" timestamp: "+imgDt+' '+imgTm+' '+str(imgSz))
-      resp, rc = executeLog("adb shell mount /data")
-      resp, rc = execute("adb pull /data/"+partName+".versionDate .")
+      resp, rc = executeAdbLog("shell mount /data")
+      resp, rc = executeAdb("pull /data/"+partName+".versionDate .")
       try:
         vDate = readFile(partName+".versionDate").split(' ')
         instDt, instTm, instSz = vDate[:3]
@@ -524,40 +526,44 @@ def flashPartFunc():
       return False
 
   logp("  flashPartFunc, writing "+imgFn+" to "+partFid)
-  resp, rc = executeLog("adb push "+imgFn+" /cache/"+imgFn)
+  resp, rc = executeAdbLog("push "+imgFn+" /cache/"+imgFn)
   if rc!=0:
     state.error.append("Writing "+imgFn+" on device failed")
     return False
 
-  resp, rc = executeLog("adb shell dd if=/cache/"+imgFn+" of="+partFid
+  resp, rc = executeAdbLog("shell dd if=/cache/"+imgFn+" of="+partFid
     +" ibs=4096")
   if rc!=0:
     state.error.append("Copying "+imgFn+" on device, to "+partName+" failed")
     return False
   if doBoth:
-    resp, rc = executeLog("adb shell dd if=/cache/"+imgFn+" of="+partFid+'2'
+    resp, rc = executeAdbLog("shell dd if=/cache/"+imgFn+" of="+partFid+'2'
       +" ibs=4096")
     if rc!=0:
       state.error.append("Copying "+imgFn+" on device, to "+partName+"2 failed")
       return False
 
-  resp, rc = executeLog("adb shell rm /cache/"+imgFn)
+  resp, rc = executeAdbLog("shell rm /cache/"+imgFn)
 
-  # Record timestamp and size of partition image file to allow for flashPart verification above
+  # Record timestamp and size of partition image file to allow for flashPart
+  # verification above
   partDate = fileDtTm(imgFn) 
-  md5 = execute('md5 '+imgFn)[0].split()[0][:8]  # record part of the md5sum of the file
+  try:
+    md5 = execute('md5 '+imgFn)[0].split()[0][:8]  # record part of the md5sum of the file
+  except:
+    md5 = "(noMD5)"
   partDate = partDate[0]+' '+partDate[1]+' '+str(partDate[2])+' '+imgFn+" "+md5
-  resp, rc = executeLog("adb shell mount /data")
+  resp, rc = executeAdbLog("shell mount /data")
   print("mount /data: %d %s" % (rc, resp))
-  resp, rc = executeLog("adb shell echo "+partDate+" > /data/"+partName+".versionDate")
+  resp, rc = executeAdbLog("shell echo "+partDate+" > /data/"+partName+".versionDate")
   print("echo versiobDate: %d %s" % (rc, resp))
-  resp, rc = executeLog("adb shell cat /data/"+partName+".versionDate")
+  resp, rc = executeAdbLog("shell cat /data/"+partName+".versionDate")
   print("versionDate readback: %d %s" % (rc, resp))
   # Cause adbd to be started (as root) when it boots in normal mode
-  resp, rc = executeLog("adb shell echo -n 1 >/data/property/persist.meraki.usb_debug")
+  resp, rc = executeAdbLog("shell echo -n 1 >/data/property/persist.meraki.usb_debug")
   logp("setting perist.meraki.usb_debug: %d %s" % (rc, resp))
-  resp, rc = executeLog("adb shell sync")
-  resp, rc = executeLog("adb shell umount /data")
+  resp, rc = executeAdbLog("shell sync")
+  resp, rc = executeAdbLog("shell umount /data")
 
   return True
   
@@ -575,11 +581,13 @@ def installAppsFunc():
   logp("installAppsFunc, uninstall dialer2, droidNode, droidNodeSystemSvc, if not already done")
 
   # Uninstall apps.  Ignore errors where the file to remove is already not there.
-  resp, rc = executeLog("adb shell rm /system/app/DroidNode.apk", ignore="No such file")
-  resp, rc = executeLog("adb shell rm /system/app/DroidNodeSystemSvcs.apk", ignore="No such file")
-  resp, rc = executeLog("adb uninstall ribo.audtest", ignore="Failure")
-  resp, rc = executeLog("adb uninstall package:com.meraki.dialer2", ignore="Failure")
-  resp, rc = executeLog("adb shell rm /data/app/com.meraki.dialer2-2.apk", ignore="No such file")
+  resp, rc = executeAdbLog("shell rm /system/app/DroidNode.apk", ignore="No such file")
+  resp, rc = executeAdbLog("shell rm /system/app/DroidNodeSystemSvcs.apk",
+    ignore="No such file")
+  resp, rc = executeAdbLog("uninstall ribo.audtest", ignore="Failure")
+  resp, rc = executeAdbLog("uninstall package:com.meraki.dialer2", ignore="Failure")
+  resp, rc = executeAdbLog("shell rm /data/app/com.meraki.dialer2-2.apk",
+    ignore="No such file")
 
   # Install programs
   for id in installFiles:
@@ -589,16 +597,16 @@ def installAppsFunc():
     dir = installFilesDir
     if isExtra:  # If this is an extra file, read it from the .../extra dir
       dir += "/extra"
-    resp, rc = executeLog("adb push "+dir+"/"+instFl[0] 
-      +" "+instFl[1]+'/'+instFl[0]) 
+    resp, rc = executeAdbLog("push "+dir+"/"+instFl[0]+" "+instFl[1]+'/'+instFl[0]) 
     if len(instFl)>2:  # If there is a fixup cmd, do it (usually chmod)
-      resp, rc = executeLog("adb shell "+instFl[2]+" "+instFl[1]+'/'+instFl[0])
+      resp, rc = executeAdbLog("shell "+instFl[2]+" "+instFl[1]+'/'+instFl[0])
 
   # Replace click with sockSvr to disable Mtunnel, first save a backup
-  resp, rc = execute("adb shell ls /system/bin/clickOrig")
+  resp, rc = executeAdb("shell ls /system/bin/clickOrig")
   if resp.find("No such file")>0:
-    resp, rc = executeLog("adb shell mv /system/bin/click /system/bin/clickOrig")
-  resp, rc = executeLog("adb shell ln -s /system/bin/sockSvr /system/bin/click", ignore="File exists")
+    resp, rc = executeAdbLog("shell mv /system/bin/click /system/bin/clickOrig")
+  resp, rc = executeAdbLog("shell ln -s /system/bin/sockSvr /system/bin/click",
+    ignore="File exists")
 
   # Install/update new apps
   for id in installApps:
@@ -625,20 +633,20 @@ def installAppsFunc():
      
     if doInstall:
       logp("  --installing app: "+id+"     ("+newDt+' '+newTm+' '+str(newSz)+")")
-      resp, rc = executeLog("adb install -t -r "+dir+"/"+fid)
+      resp, rc = executeAdbLog("install -t -r "+dir+"/"+fid)
   
 
-  # Make the shell prompt something short
-  resp, rc = execute("adb shell rm /sdcard/SHELL_PROMPT")  # File is used by /system/etc/mkshrc
-  resp, rc = execute("adb shell touch /sdcard/SHELL_PROMPT")
+  # Make the shell prompt something short, edit file is used by /system/etc/mkshrc
+  resp, rc = executeAdb("shell rm /sdcard/SHELL_PROMPT")
+  resp, rc = executeAdb("shell touch /sdcard/SHELL_PROMPT")
 
 
   if options.extra[0]:  # Do extra install stuff (not for general users)
     print("(do extra install ops)")
-    # Set register refresh interval to 10 min
-    # 
+    # Set .linphonerc reg_expire, register refresh interval to 10 min
 
-  # Change the Nova Launcher favorites db to make Phone connect to reviveMC74 and add icons
+
+  # Change Nova Launcher favorites db to make Phone connect to reviveMC74, add icons
   initLauncher()
 
 
@@ -646,7 +654,7 @@ def installAppsFunc():
   # 'ip addr | grep \ eth0:' look like:
   # 3: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 512
   #     link/ether e0:55:3d:50:56:10 brd ff:ff:ff:ff:ff:ff
-  resp, rc = execute("adb shell ip addr |grep -A1 \ eth0: | grep ether")
+  resp, rc = executeAdb("shell ip addr |grep -A1 \ eth0: | grep ether")
   state.mac = resp.strip().split(' ')[1]
   print("  (mac "+state.mac+")");
   
@@ -805,11 +813,11 @@ def resetBFFFunc():
 
 def startPhoneFunc():
   logp("startPhoneFunc")
-  resp, rc = executeLog("adb shell am startservice ribo.ssm/.SSMservice")
-  resp, rc = executeLog("adb shell am start revive.MC74/org.linphone.dialer.DialerActivity")
-  resp, rc = executeLog("adb shell am force-stop com.meraki.droidnode")
-  resp, rc = executeLog("adb shell am force-stop com.meraki.dialer2")
-  resp, rc = executeLog("adb shell am force-stop com.meraki.dialer2:pjsip")
+  resp, rc = executeAdbLog("shell am startservice ribo.ssm/.SSMservice")
+  resp, rc = executeAdbLog("shell am start revive.MC74/org.linphone.dialer.DialerActivity")
+  resp, rc = executeAdbLog("shell am force-stop com.meraki.droidnode")
+  resp, rc = executeAdbLog("shell am force-stop com.meraki.dialer2")
+  resp, rc = executeAdbLog("shell am force-stop com.meraki.dialer2:pjsip")
 
   msg = ""
   if "serialNo" in state: msg = "sn "+state.serialNo
@@ -837,17 +845,17 @@ def versionFunc():
 
   if state.adbMode == "recovery":
     # Mount /system, and /data  if in recovery mode
-    resp, rc = executeLog("mount /dev/block/platform/sdhci.1/by-name/system /system")
-    resp, rc = executeLog("mount /dev/block/platform/sdhci.1/by-name/userdata /data")
+    resp, rc = executeAdbLog("shell mount /dev/block/platform/sdhci.1/by-name/system /system")
+    resp, rc = executeAdbLog("shell mount /dev/block/platform/sdhci.1/by-name/userdata /data")
   
   iList = []
 
   # Get the device serial number from u-boot-env partition
-  resp, rc = executeLog("adb shell dd if=/dev/block/platform/sdhci.1/by-name/u-boot-env " \
+  resp, rc = executeAdbLog("shell dd if=/dev/block/platform/sdhci.1/by-name/u-boot-env " \
     "of=/cache/uBootEnv bs=640 count=1")
   if rc==0:
-    resp, rc = executeLog("adb pull /cache/uBootEnv uBootEnv.tmp")
-    resp, rc = executeLog("adb shell rm /cache/uBootEnv")
+    resp, rc = executeAdbLog("pull /cache/uBootEnv uBootEnv.tmp")
+    resp, rc = executeAdbLog("shell rm /cache/uBootEnv")
     ube = readFile("uBootEnv.tmp")
     if len(ube)>5:  # Remove mysterious leading 5 bytes
       ube = ube[5:]
@@ -869,7 +877,7 @@ def versionFunc():
 
   # Get ro.build.version.release, ro.build.id, ro.build.date
   propNames = ["ro.build.id", "ro.build.version.release", "ro.build.date"]
-  resp, rc = execute("adb shell cat /system/build.prop")
+  resp, rc = executeAdb("shell cat /system/build.prop")
   prop = bunch()
   if rc == 0:
     lines = linesToList(resp)
@@ -891,7 +899,7 @@ def versionFunc():
   getDateTime(iList, "/cache/downloads/images/system.img")
 
   # Read /proc/version (in normal mode)
-  resp, rc = executeLog("adb shell cat /proc/version")
+  resp, rc = executeAdbLog("shell cat /proc/version")
   if rc==0:
     iList.append("/procVersion:\t"+resp)
   else:
@@ -987,6 +995,7 @@ objectives = [
   ['version', "Find and record some software version info"],
   ['manual', "Place to manually invoke reviveMC74 functions (advanced users)"],
   ['resetBFF', "(manual step) Reset the 'Boot partion Fixed Flag'"],
+  ['push', '(for developers only) Update the local repo then push changes to github'],
 ] # end of objectives
 
 
