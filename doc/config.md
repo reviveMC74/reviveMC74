@@ -109,8 +109,8 @@ the 'MC74local.mpSample' to 'MC74local.mp' and edit that file.  Here's an exampl
       latLong: '41.8239, -71.4128'
       map: 'aerial'
       zoom: '7'
-   mainFooter:
-     -sms
+    mainFooter:
+      -sms
 
 When the MC74local object is overlayed on the MC74 object:
 * The '-sms' in the 'mainFooter' section in MC74 is deleted, removing that button 
@@ -141,6 +141,17 @@ for 'mainFooter' buttons; for 'sideMenu' nodes, the value of the node is the tex
 the side menu entry.  (The '' can be omitted in the text version of an object, it is shown when 
 a binary version of the object is rendered as text.)
 
+
+### Hostname and Launcher App
+
+Some other things can be set (only in MC74local.mp), they are:
+- **launcher: 'com.teslacoilsw.launcher/.NovaLauncher'**  The MC74 doesn't have an Android launcher app.  By default reviveMC74 uses the
+NovaLauncher as the launcher.  If you add a 'launcher' node, you can override this default.
+
+For installations with many phones, setting the hostname for the MC74 may be useful.  (In the MC74, the hostname is set to the useless,
+'localhost' by instructions in /init.rc files.  These cannot be changed easily because they are in the initial ram disk on the boot partition.
+SSM uses the contents of the /etc/hostname file to set the hostname.  So, set the hostname you want in /etc/hostname and it will be transfered 
+to the active hostname.
 
 
 ### Weather Radar Page
