@@ -958,7 +958,7 @@ def pushFunc():
     print("Enter commit message text:")
     commitMsg = input()  # Let user do any git adds needed
   except: 
-    pass
+    hndExcept()
 
   resp, rc = execute('git commit -am "'+commitMsg+'"')
   print("Execute: git push")
