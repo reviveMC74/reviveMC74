@@ -12,8 +12,13 @@ where it left off and continues.  This allows you to do things like root the pho
 and tinker with the boot image contents and continue on installing.  If the process
 fails at some point you can patch things up and continue on.
 
-The install process is intended to work from a Windows or Linux host computer with Python 2.7 or 3.x.  However, development is first being done and tested on Windows with Python
-2.7.
+The install process works from a Windows or Linux host computer with Python 2.7 or 3.x -- verified on Linux with Python 3. (Earlier versions of this script would crash immediately
+on Python 3 due to a Python 2-only `unicode` reference in `ribou.py`; this is now fixed.)
+
+**Note on `adb`/`fastboot` versions:** if you're using a modern `android-platform-tools`
+release (34.x+), fastboot detection now works correctly -- older versions of this script
+looked for a literal `"fastboot"` substring in `fastboot devices` output, which recent
+`fastboot` builds no longer print (they say `"Android Fastboot"` instead).
 
 ### Prerequisites
 
