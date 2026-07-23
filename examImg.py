@@ -55,7 +55,7 @@ def compareImg(args):
       iInfo[fn] = analyzeDir(fn)
      
   # For each .img, prepare a column of signature information
-  imgNmList = args if len(args)>0 else iInfo.keys()
+  imgNmList = args if len(args)>0 else list(iInfo.keys())
   ref = iInfo[imgNmList[0]]  # Reference img to compare to
   sig = bunch()
   for imgNm in iInfo:
@@ -79,12 +79,12 @@ def makeSignature(ref, iInf):
   resp = [fileSig(None, iInf.img.name, iInf, ref)]
 
   resp.append("         UNPACK".ljust(len(resp[0])))  # Make all lines the same length
-  sortedFns = iInf.unpack.keys(); sortedFns.sort()
+  sortedFns = sorted(iInf.unpack.keys())
   for fn in sortedFns:
     resp.append(fileSig("unpack", fn, iInf, ref))
-    
+
   resp.append("        RAMDISK".ljust(len(resp[0])))
-  sortedFns = iInf.ramdisk.keys(); sortedFns.sort()
+  sortedFns = sorted(iInf.ramdisk.keys())
   for fn in sortedFns:
     resp.append(fileSig("ramdisk", fn, iInf, ref))
   return resp  
@@ -514,8 +514,8 @@ def gr(rowNo):
   return dbGetRow(ldb, "favorites", "_id", rowNo)
 
 def cmpb(ba, bb):
-  baNames = ba.keys();  baNames.sort()
-  bbNames = bb.keys();  bbNames.sort()
+  baNames = sorted(ba.keys())
+  bbNames = sorted(bb.keys())
   notInB = []
   
   for nm in baNames:

@@ -358,11 +358,8 @@ def execu(cmd, stdin=None, showErr=True, returnStr=True):
   out, err = proc.communicate(stdin)
   if showErr and len(err)>0:
     print("executeErr: %s" % (err))
-  if returnStr:
-    try:
-      out = out.encode()
-    except: 
-      out = out.decode("utf-8")  # Needed for python3   bytes->str
+  if returnStr and type(out)==bytes:
+    out = out.decode("ISO-8859-1")  # Needed for python3   bytes->str, matches execute()
   return out, proc.returncode
 
 
@@ -383,12 +380,16 @@ def execute(cmd, showErr=True, returnStr=True):
   
   if showErr and len(err)>0:
     out += err
-  if returnStr and type(out)==unicode:
-    # Trying to make 'out' be an ASCII string whether in py2 or py3, sigh.
+  # On py2, 'out' may still be a 'unicode' object here (str.decode() above
+  # returns unicode on py2); re-encode it to a plain 'str'/bytes. On py3
+  # 'out' is already the 'str' we want post-decode, so skip this entirely
+  # (checking version first so 'unicode', which doesn't exist on py3, is
+  # never evaluated).
+  if returnStr and sys.version_info[0] < 3 and type(out)==unicode:
     try:
       out = out.encode("ISO-8859-1")    # Convert UNICODE (u'xxx') to string
       # on 2.7, out was a unicode, encode makes it a string, ISO-8859-1 handles chars > 0x80
-    except: 
+    except:
       out = out.decode("utf-8")  # Needed for python3   bytes->str
   return out, proc.returncode
 
