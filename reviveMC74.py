@@ -218,6 +218,18 @@ def reviveMain(args):
 
 
 # VARIOUS UTILITY FUNCTIONS --------------------------------------------------
+def findFastbootLine(resp):
+  '''Find the device line in 'fastboot devices' output. Older fastboot clients
+  print the state as a bare "fastboot" token, but newer ones (platform-tools
+  34.x+) print "Android Fastboot" instead -- match case-insensitively but
+  return the original-case line so serial number extraction isn't affected.
+  '''
+  for line in resp.split('\n'):
+    if '\t' in line and 'fastboot' in line.lower():
+      return line
+  return None
+
+
 def chkProg(pg):
   try:
     resp, rc = execute(pg[0], False)
@@ -704,7 +716,7 @@ def adbModeFunc(targetMode="adb"):
     isAdb = True  # Normal mode (after fixing) should also adb enabled.
   else:
     resp, rc = executeLog("fastboot devices")
-    ln = findLine(resp, "\tfastboot")
+    ln = findFastbootLine(resp)
     if ln:
       currentMode = "fastboot"
       state.serialNo = ln.split('\t')[0]
@@ -786,7 +798,7 @@ def bootWaitLoop(tMode):
 
   for ii in range(0, 12):
     resp, rc = executeLog(cmd+" devices")
-    ln = findLine(resp, searchStr)
+    ln = findFastbootLine(resp) if tMode=="fastboot" else findLine(resp, searchStr)
     if ln:
       state.serialNo = ln.split('\t')[0]
       print("      found device with serial number: "+state.serialNo)
